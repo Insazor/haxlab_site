@@ -508,7 +508,7 @@ function hero(title, summary, tags, panel, art, options = {}) {
   const accentStrong = hexToRgba(accent, 0.36);
   const pageLabel = options.eyebrow || "HAX Lab";
   const artHtml = art ? `
-    <figure class="js-hero-panel overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.08]">
+    <figure class="js-hero-panel js-hero-layer overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.08]" data-hero-depth="18">
       <img class="aspect-[4/3] w-full object-cover" src="${esc(art.image)}" alt="${esc(art.title || title)}" loading="lazy">
       <figcaption class="space-y-1 px-5 py-4">
         <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">${esc(art.kicker || "Featured")}</div>
@@ -517,22 +517,22 @@ function hero(title, summary, tags, panel, art, options = {}) {
     </figure>
   ` : "";
   return `
-    <section class="hero-card">
-      <div class="orb js-orb-a -left-20 -top-16 h-48 w-48" style="background:${accentSoft};"></div>
-      <div class="orb js-orb-b bottom-0 right-0 h-44 w-44" style="background:${accentStrong};"></div>
+    <section class="hero-card js-hero-surface">
+      <div class="orb js-orb-a js-hero-layer -left-20 -top-16 h-48 w-48" data-hero-depth="28" style="background:${accentSoft};"></div>
+      <div class="orb js-orb-b js-hero-layer bottom-0 right-0 h-44 w-44" data-hero-depth="22" style="background:${accentStrong};"></div>
       <div class="hero-grid">
-        <div class="relative z-10 space-y-6">
+        <div class="relative z-10 space-y-6 js-hero-layer" data-hero-depth="12">
           <div class="space-y-4">
             <span class="eyebrow js-hero-line">${esc(pageLabel)}</span>
             <h1 class="js-hero-line max-w-4xl font-serif text-4xl leading-tight text-balance sm:text-5xl lg:text-6xl">${esc(title)}</h1>
             <p class="js-hero-line max-w-3xl text-base leading-8 text-white/80 sm:text-lg">${esc(summary)}</p>
           </div>
           <div class="js-hero-line flex flex-wrap gap-2">
-            ${tags.map((tag) => `<span class="rounded-full border border-white/15 bg-white/[0.08] px-3 py-1 text-sm font-medium text-white/90">${esc(tag)}</span>`).join("")}
+            ${tags.map((tag) => `<span class="js-hero-chip rounded-full border border-white/15 bg-white/[0.08] px-3 py-1 text-sm font-medium text-white/90">${esc(tag)}</span>`).join("")}
           </div>
         </div>
-        <div class="relative z-10 space-y-4">
-          <aside class="js-hero-panel rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 backdrop-blur">
+        <div class="relative z-10 space-y-4 js-hero-layer" data-hero-depth="20">
+          <aside class="js-hero-panel js-hero-layer rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 backdrop-blur" data-hero-depth="24">
             <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/50">${esc(panel.title)}</p>
             <p class="mt-3 text-sm leading-7 text-white/70">${esc(panel.text)}</p>
             <div class="mt-5 space-y-4">
@@ -549,6 +549,90 @@ function hero(title, summary, tags, panel, art, options = {}) {
       </div>
     </section>
   `;
+}
+
+function ensureScrollIndicator() {
+  let indicator = document.querySelector(".scroll-indicator");
+  if (!indicator) {
+    indicator = document.createElement("div");
+    indicator.className = "scroll-indicator";
+    indicator.innerHTML = '<span class="scroll-indicator__fill"></span>';
+    document.body.appendChild(indicator);
+  }
+  return indicator;
+}
+
+function initScrollIndicator() {
+  const indicator = ensureScrollIndicator();
+  const fill = indicator.querySelector(".scroll-indicator__fill");
+  if (!fill) return;
+
+  animate(indicator, {
+    opacity: [0, 1],
+    duration: 480,
+    ease: "outCubic",
+  });
+
+  const update = () => {
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = max > 0 ? clampValue(window.scrollY / max, 0, 1) : 0;
+    fill.style.transform = `scaleX(${progress})`;
+  };
+
+  update();
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+}
+
+function initHeroPointerMotion() {
+  if (!window.matchMedia("(pointer: fine)").matches) return;
+  const hero = document.querySelector(".js-hero-surface");
+  if (!hero) return;
+
+  const layers = [...hero.querySelectorAll("[data-hero-depth]")];
+  if (!layers.length) return;
+
+  let frame = 0;
+  let bounds = null;
+  let targetX = 0;
+  let targetY = 0;
+
+  const apply = () => {
+    frame = 0;
+    layers.forEach((layer) => {
+      const depth = Number(layer.dataset.heroDepth || 12);
+      animate(layer, {
+        translateX: targetX * depth,
+        translateY: targetY * depth,
+        duration: 520,
+        ease: "outQuad",
+      });
+    });
+  };
+
+  hero.addEventListener("pointerenter", () => {
+    bounds = hero.getBoundingClientRect();
+  });
+
+  hero.addEventListener("pointermove", (event) => {
+    bounds = bounds || hero.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) - 0.5;
+    const y = ((event.clientY - bounds.top) / bounds.height) - 0.5;
+    targetX = x * 1.35;
+    targetY = y * 1.15;
+    if (!frame) frame = window.requestAnimationFrame(apply);
+  });
+
+  hero.addEventListener("pointerleave", () => {
+    targetX = 0;
+    targetY = 0;
+    bounds = null;
+    if (!frame) frame = window.requestAnimationFrame(apply);
+  });
+
+  window.addEventListener("resize", () => {
+    bounds = null;
+  });
 }
 
 function sectionWrap(title, intro, inner, options = "") {
@@ -842,6 +926,14 @@ function initHeroScene() {
     delay: stagger(120, { start: 180 }),
     ease: "outExpo",
   });
+  animate(".js-hero-chip", {
+    translateY: [0, -7],
+    duration: 2200,
+    delay: stagger(140),
+    loop: true,
+    alternate: true,
+    ease: "inOutSine",
+  });
   animate(".js-orb-a", {
     translateX: ["-2%", "3%"],
     translateY: ["-2%", "4%"],
@@ -924,6 +1016,8 @@ function initHeroScene() {
     window.requestAnimationFrame(updateParallax);
   }, { passive: true });
   window.addEventListener("resize", updateParallax);
+
+  initHeroPointerMotion();
 }
 
 function updateMeta(pageKey) {
@@ -952,6 +1046,7 @@ function init() {
   setupMenu(PROFILE_DATA[pageKey] ? "people" : pageKey);
   updateMeta(pageKey);
   renderPage(pageKey);
+  initScrollIndicator();
   initHeroScene();
 }
 
