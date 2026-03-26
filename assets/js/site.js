@@ -1,3 +1,5 @@
+import { animate, stagger } from "../vendor/animejs/anime.esm.js";
+
 const NAV_ITEMS = [
   ["home", "index.html", "Home"],
   ["news", "news.html", "News"],
@@ -374,6 +376,27 @@ function initials(name) {
   return String(name || "").slice(0, 2).toUpperCase();
 }
 
+function clampValue(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function hexToRgba(hex, alpha) {
+  const normalized = String(hex || "#429ba3").replace("#", "");
+  const safe = normalized.length === 3
+    ? normalized.split("").map((char) => `${char}${char}`).join("")
+    : normalized.padEnd(6, "0").slice(0, 6);
+  const value = Number.parseInt(safe, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function pageToneKey(pageKey) {
+  if (String(pageKey).startsWith("profile-")) return "profile";
+  return pageKey;
+}
+
 function resolvePageKey() {
   const bodyPage = document.body?.dataset.page;
   if (bodyPage) return bodyPage;
@@ -386,11 +409,12 @@ function resolvePageKey() {
 function renderBrand() {
   const brand = document.querySelector(".brand");
   if (!brand) return;
+  brand.className = "brand-lockup";
   brand.innerHTML = `
     <span class="brand-mark">HAX</span>
     <span class="brand-copy">
       <strong>HAX Lab</strong>
-      <span>Human-centered XR and AX</span>
+      <span>Human-Centered XR Systems</span>
     </span>
   `;
 }
@@ -399,57 +423,146 @@ function setupMenu(activeKey) {
   const nav = document.getElementById("site-menu");
   const toggle = document.getElementById("menu-toggle");
   if (!nav) return;
+  nav.className = "hidden w-full flex-col gap-2 pt-3 lg:flex lg:w-auto lg:flex-row lg:items-center lg:gap-1 lg:pt-0";
   nav.innerHTML = NAV_ITEMS.map(([key, href, label]) => {
     const active = key === activeKey;
-    return `<a class="${active ? "active" : ""}" href="${href}"${active ? ' aria-current="page"' : ""}>${esc(label)}</a>`;
+    const className = active ? "nav-link nav-link-active" : "nav-link";
+    return `<a class="${className}" href="${href}"${active ? ' aria-current="page"' : ""}>${esc(label)}</a>`;
   }).join("");
   if (toggle) {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const closeMenu = (instant = false) => {
+      if (desktopQuery.matches) {
+        nav.classList.remove("hidden");
+        nav.style.height = "";
+        nav.style.opacity = "";
+        toggle.setAttribute("aria-expanded", "false");
+        return;
+      }
+      if (instant) {
+        nav.classList.add("hidden");
+        nav.style.height = "";
+        nav.style.opacity = "";
+        toggle.setAttribute("aria-expanded", "false");
+        return;
+      }
+      const currentHeight = nav.scrollHeight || nav.getBoundingClientRect().height || 0;
+      animate(nav, {
+        height: [currentHeight, 0],
+        opacity: [1, 0],
+        duration: 260,
+        ease: "outCubic",
+        onComplete: () => {
+          nav.classList.add("hidden");
+          nav.style.height = "";
+          nav.style.opacity = "";
+          toggle.setAttribute("aria-expanded", "false");
+        },
+      });
+    };
+    const openMenu = () => {
+      nav.classList.remove("hidden");
+      nav.style.height = "0px";
+      nav.style.opacity = "0";
+      animate(nav, {
+        height: [0, nav.scrollHeight],
+        opacity: [0, 1],
+        duration: 320,
+        ease: "outCubic",
+        onComplete: () => {
+          nav.style.height = "";
+          nav.style.opacity = "";
+          toggle.setAttribute("aria-expanded", "true");
+        },
+      });
+    };
+    const syncMenu = () => {
+      if (desktopQuery.matches) {
+        nav.classList.remove("hidden");
+        nav.style.height = "";
+        nav.style.opacity = "";
+      } else {
+        nav.classList.add("hidden");
+        nav.style.height = "";
+        nav.style.opacity = "";
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    };
+    syncMenu();
+    desktopQuery.addEventListener("change", syncMenu);
     toggle.addEventListener("click", () => {
-      const open = nav.classList.toggle("open");
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (desktopQuery.matches) return;
+      if (nav.classList.contains("hidden")) {
+        openMenu();
+      } else {
+        closeMenu();
+      }
     });
   }
 }
 
-function hero(title, summary, tags, panel, art) {
-  const artHtml = art
-    ? `
-        <div class="hero-figure reveal" style="--delay:0.18s;">
-          <div class="hero-figure__image"><img src="${esc(art.image)}" alt="${esc(art.title || title)}" loading="lazy"></div>
-          <div class="hero-figure__caption"><strong>${esc(art.kicker || "Featured")}</strong><span>${esc(art.title || "")}</span></div>
-        </div>
-      `
-    : "";
+function hero(title, summary, tags, panel, art, options = {}) {
+  const themeKey = pageToneKey(options.themeKey || "home");
+  const accent = HERO_COLORS[themeKey] || HERO_COLORS.home;
+  const accentSoft = hexToRgba(accent, 0.24);
+  const accentStrong = hexToRgba(accent, 0.36);
+  const pageLabel = options.eyebrow || "HAX Lab";
+  const artHtml = art ? `
+    <figure class="js-hero-panel overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.08]">
+      <img class="aspect-[4/3] w-full object-cover" src="${esc(art.image)}" alt="${esc(art.title || title)}" loading="lazy">
+      <figcaption class="space-y-1 px-5 py-4">
+        <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">${esc(art.kicker || "Featured")}</div>
+        <div class="text-sm font-medium text-white">${esc(art.title || "")}</div>
+      </figcaption>
+    </figure>
+  ` : "";
   return `
-    <section class="hero reveal">
-      <canvas class="hero-canvas" aria-hidden="true"></canvas>
-      <div class="hero-overlay ${art ? "hero-overlay--art" : ""}">
-        <div class="hero-copy reveal" style="--delay:0.04s;">
-          <p class="eyebrow">HAX Lab</p>
-          <h1 class="hero-title">${esc(title)}</h1>
-          <p class="hero-summary">${esc(summary)}</p>
-          <div class="hero-tags">${tags.map((tag) => `<span class="hero-tag">${esc(tag)}</span>`).join("")}</div>
+    <section class="hero-card">
+      <div class="orb js-orb-a -left-20 -top-16 h-48 w-48" style="background:${accentSoft};"></div>
+      <div class="orb js-orb-b bottom-0 right-0 h-44 w-44" style="background:${accentStrong};"></div>
+      <div class="hero-grid">
+        <div class="relative z-10 space-y-6">
+          <div class="space-y-4">
+            <span class="eyebrow js-hero-line">${esc(pageLabel)}</span>
+            <h1 class="js-hero-line max-w-4xl font-serif text-4xl leading-tight text-balance sm:text-5xl lg:text-6xl">${esc(title)}</h1>
+            <p class="js-hero-line max-w-3xl text-base leading-8 text-white/80 sm:text-lg">${esc(summary)}</p>
+          </div>
+          <div class="js-hero-line flex flex-wrap gap-2">
+            ${tags.map((tag) => `<span class="rounded-full border border-white/15 bg-white/[0.08] px-3 py-1 text-sm font-medium text-white/90">${esc(tag)}</span>`).join("")}
+          </div>
         </div>
-        <aside class="hero-panel reveal" style="--delay:0.12s;">
-          <h2>${esc(panel.title)}</h2>
-          <p>${esc(panel.text)}</p>
-          <div class="hero-panel-list">${panel.items.map((item) => `<div class="hero-panel-item"><strong>${esc(item[0])}</strong><span>${esc(item[1])}</span></div>`).join("")}</div>
-        </aside>
-        ${artHtml}
+        <div class="relative z-10 space-y-4">
+          <aside class="js-hero-panel rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 backdrop-blur">
+            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/50">${esc(panel.title)}</p>
+            <p class="mt-3 text-sm leading-7 text-white/70">${esc(panel.text)}</p>
+            <div class="mt-5 space-y-4">
+              ${panel.items.map((item) => `
+                <div class="border-t border-white/10 pt-4 first:border-t-0 first:pt-0">
+                  <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">${esc(item[0])}</div>
+                  <div class="mt-2 text-sm font-medium text-white">${esc(item[1])}</div>
+                </div>
+              `).join("")}
+            </div>
+          </aside>
+          ${artHtml}
+        </div>
       </div>
     </section>
   `;
 }
 
-function sectionWrap(title, intro, inner, extraClass = "") {
-  const cls = extraClass ? `section ${extraClass}` : "section";
+function sectionWrap(title, intro, inner, options = "") {
+  const config = typeof options === "string" ? { className: options } : (options || {});
+  const cls = config.className ? `section-block ${config.className}` : "section-block";
+  const eyebrow = config.eyebrow || "Section";
   return `
-    <section class="${cls}">
-      <div class="section-head reveal">
-        <div>
-          <h2>${esc(title)}</h2>
-          <p>${esc(intro)}</p>
+    <section class="${cls}" data-reveal>
+      <div class="section-heading">
+        <div class="space-y-3">
+          <span class="eyebrow">${esc(eyebrow)}</span>
+          <h2 class="font-serif text-3xl text-ink-950 sm:text-4xl">${esc(title)}</h2>
         </div>
+        <p class="max-w-3xl text-sm leading-7 text-ink-500 sm:text-base">${esc(intro)}</p>
       </div>
       ${inner}
     </section>
@@ -457,84 +570,93 @@ function sectionWrap(title, intro, inner, extraClass = "") {
 }
 
 function renderStats(items) {
-  return `<div class="stats-band">${items.map((item, idx) => `
-    <article class="stat-card reveal" style="--delay:${(idx * 0.04).toFixed(2)}s;">
-      <strong>${esc(item[1])}</strong>
-      <span>${esc(item[0])}</span>
+  return `<div class="metric-grid">${items.map((item) => `
+    <article class="metric-card" data-reveal-item>
+      <div class="text-2xl font-semibold text-ink-950">${esc(item[1])}</div>
+      <div class="mt-2 text-xs font-semibold uppercase tracking-[0.24em] text-ink-500">${esc(item[0])}</div>
     </article>`).join("")}</div>`;
 }
 
 function renderPillRow(items) {
   if (!items || !items.length) return "";
-  return `<div class="pill-row">${items.map((item) => `<span class="pill">${esc(item)}</span>`).join("")}</div>`;
+  return `<div class="chip-row">${items.map((item) => `<span class="chip">${esc(item)}</span>`).join("")}</div>`;
 }
 
 function renderCards(items) {
-  return `<div class="card-grid">${items.map((item, idx) => `
-    <article class="content-card reveal" style="--delay:${(idx * 0.05).toFixed(2)}s;">
-      ${item.image ? `<div class="content-card__image"><img src="${esc(item.image)}" alt="${esc(item.title)}" loading="lazy"></div>` : ""}
-      <span class="content-card__eyebrow">${esc(item.meta)}</span>
-      <h3>${esc(item.title)}</h3>
-      <p>${esc(item.text)}</p>
+  return `<div class="info-grid">${items.map((item) => `
+    <article class="feature-card" data-reveal-item>
+      ${item.image ? `<img class="mb-5 aspect-[16/10] w-full rounded-[1.25rem] object-cover" src="${esc(item.image)}" alt="${esc(item.title)}" loading="lazy">` : ""}
+      <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(item.meta)}</span>
+      <h3 class="mt-3 font-serif text-2xl text-ink-950">${esc(item.title)}</h3>
+      <p class="mt-3 text-sm leading-7 text-ink-500">${esc(item.text)}</p>
       ${renderPillRow(item.pills)}
     </article>`).join("")}</div>`;
 }
 
 function renderTimeline(items) {
-  return `<div class="timeline-list">${items.map((item, idx) => `
-    <article class="timeline-item reveal" style="--delay:${(idx * 0.04).toFixed(2)}s;">
-      <span class="timeline-item__date">${esc(item[0])}</span>
-      <h3>${esc(item[1])}</h3>
-      <p>${esc(item[2])}</p>
+  return `<div class="timeline-list">${items.map((item) => `
+    <article class="timeline-item" data-reveal-item>
+      <span class="inline-flex rounded-full bg-lab-600/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(item[0])}</span>
+      <h3 class="mt-4 font-serif text-2xl text-ink-950">${esc(item[1])}</h3>
+      <p class="mt-3 text-sm leading-7 text-ink-500">${esc(item[2])}</p>
     </article>`).join("")}</div>`;
 }
 
 function renderMembers(items) {
-  return `<div class="member-grid">${items.map((item, idx) => `
-    <article class="member-card reveal" style="--delay:${(idx * 0.04).toFixed(2)}s;">
-      <div class="member-card__top">
-        ${item.image ? `<span class="member-avatar"><img src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy"></span>` : `<span class="member-avatar">${esc(initials(item.name))}</span>`}
-        <div class="member-card__meta">
-          <span class="member-role">${esc(item.role)}</span>
-          <h3>${esc(item.name)}</h3>
-          <p>${esc(item.text)}</p>
+  return `<div class="member-grid">${items.map((item) => `
+    <article class="member-card" data-reveal-item>
+      <div class="flex items-start gap-4">
+        ${item.image ? `<img class="h-16 w-16 rounded-2xl object-cover" src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy">` : `<div class="grid h-16 w-16 place-items-center rounded-2xl bg-paper-100 text-lg font-semibold text-ink-900">${esc(initials(item.name))}</div>`}
+        <div class="min-w-0">
+          <span class="text-xs font-semibold uppercase tracking-[0.22em] text-lab-700">${esc(item.role)}</span>
+          <h3 class="mt-2 font-serif text-2xl text-ink-950">${esc(item.name)}</h3>
+          <p class="mt-3 text-sm leading-7 text-ink-500">${esc(item.text)}</p>
         </div>
       </div>
-      ${item.link ? `<a class="link-chip" href="${esc(item.link)}">Open profile</a>` : ""}
+      ${item.link ? `<a class="mt-5 inline-flex rounded-full border border-ink-950 px-4 py-2 text-sm font-semibold text-ink-950 transition-colors duration-200 hover:bg-ink-950 hover:text-white" href="${esc(item.link)}">View profile</a>` : ""}
     </article>`).join("")}</div>`;
 }
 
 function renderPublications(groups) {
-  return `<div class="publication-board">${groups.map((group, idx) => `
-    <article class="publication-group reveal" style="--delay:${(idx * 0.05).toFixed(2)}s;">
-      <h3>${esc(group.title)}</h3>
-      <ul>${group.items.map((entry) => `<li><strong>${esc(entry[1])}</strong><br>${esc(entry[0])}<br>${esc(entry[2])}</li>`).join("")}</ul>
+  return `<div class="publication-grid">${groups.map((group) => `
+    <article class="publication-card" data-reveal-item>
+      <div class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(group.title)}</div>
+      <ul class="mt-4 space-y-4">${group.items.map((entry) => `
+        <li class="border-t border-paper-200 pt-4 first:border-t-0 first:pt-0">
+          <h3 class="font-semibold text-ink-950">${esc(entry[1])}</h3>
+          <p class="mt-1 text-sm text-ink-700">${esc(entry[0])}</p>
+          <p class="mt-2 text-sm leading-7 text-ink-500">${esc(entry[2])}</p>
+        </li>`).join("")}</ul>
     </article>`).join("")}</div>`;
 }
 
 function renderGallery(items) {
-  return `<div class="gallery-grid">${items.map((item, idx) => `
-    <figure class="gallery-card reveal" style="--delay:${(idx * 0.03).toFixed(2)}s;">
-      <img src="${esc(item[0])}" alt="${esc(item[1])}" loading="lazy">
-      <figcaption>${esc(item[1])}</figcaption>
+  return `<div class="gallery-grid">${items.map((item) => `
+    <figure class="gallery-card" data-parallax="-18" data-reveal-item>
+      <img class="aspect-[16/11] w-full object-cover" src="${esc(item[0])}" alt="${esc(item[1])}" loading="lazy">
+      <figcaption class="px-5 py-4 text-sm text-ink-500">${esc(item[1])}</figcaption>
     </figure>`).join("")}</div>`;
 }
 
 function renderDetailList(items) {
-  return `<div class="detail-list">${items.map((item) => `<div class="detail-item"><strong>${esc(item[0])}</strong><p>${esc(item[1])}</p></div>`).join("")}</div>`;
+  return `<div class="space-y-4">${items.map((item) => `
+    <div class="rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4">
+      <div class="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">${esc(item[0])}</div>
+      <p class="mt-2 text-sm leading-7 text-ink-500">${esc(item[1])}</p>
+    </div>`).join("")}</div>`;
 }
 
 function renderFeatureSplit(feature) {
   return `
-    <div class="feature-split">
-      <article class="feature-copy reveal">
-        <span class="item-meta">${esc(feature.label)}</span>
-        <h3>${esc(feature.title)}</h3>
-        <p>${esc(feature.text)}</p>
-        ${renderDetailList(feature.points)}
+    <div class="story-grid">
+      <article class="feature-card" data-reveal-item>
+        <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(feature.label)}</span>
+        <h3 class="mt-3 font-serif text-3xl text-ink-950">${esc(feature.title)}</h3>
+        <p class="mt-4 text-sm leading-7 text-ink-500">${esc(feature.text)}</p>
+        <div class="mt-5">${renderDetailList(feature.points)}</div>
       </article>
-      <figure class="feature-media reveal" style="--delay:0.06s;">
-        <img src="${esc(feature.image)}" alt="${esc(feature.title)}" loading="lazy">
+      <figure class="overflow-hidden rounded-[1.75rem] border border-paper-200 bg-paper-100" data-parallax="-28" data-reveal-item>
+        <img class="h-full min-h-full w-full object-cover" src="${esc(feature.image)}" alt="${esc(feature.title)}" loading="lazy">
       </figure>
     </div>
   `;
@@ -552,55 +674,62 @@ function renderProfile(key) {
       text: "A compact view of the member's role, focus, and current contribution inside the lab.",
       items: [["Role", profile.role], ["Focus", profile.focus], ["Contact", profile.email || "On request"]],
     },
-    { kicker: profile.role, title: profile.name, image: profile.image }
+    { kicker: profile.role, title: profile.name, image: profile.image },
+    { themeKey: "profile", eyebrow: "People" }
   ) + sectionWrap(
     "Overview",
-    "Core information and working context.",
+    "Current affiliation, focus, and working summary.",
     `
-      <div class="profile-layout">
-        <article class="profile-card reveal">
-          <div class="profile-photo"><img src="${esc(profile.image)}" alt="${esc(profile.name)}" loading="lazy"></div>
-        </article>
-        <article class="profile-card reveal" style="--delay:0.05s;">
-          <span class="member-role">${esc(profile.role)}</span>
-          <h3>${esc(profile.name)}</h3>
-          <p>${esc(profile.summary)}</p>
-          <div class="profile-metrics">
-            <div class="metric-chip"><strong>Affiliation</strong><span>${esc(profile.affiliation)}</span></div>
-            <div class="metric-chip"><strong>Focus</strong><span>${esc(profile.focus)}</span></div>
-            <div class="metric-chip"><strong>Email</strong><span>${esc(profile.email || "On request")}</span></div>
-            <div class="metric-chip"><strong>Lab</strong><span>HAX Lab</span></div>
+      <div class="profile-grid">
+        <figure class="profile-photo" data-parallax="-24" data-reveal-item>
+          <img class="aspect-[4/5] w-full object-cover" src="${esc(profile.image)}" alt="${esc(profile.name)}" loading="lazy">
+        </figure>
+        <article class="feature-card space-y-5" data-reveal-item>
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.22em] text-lab-700">${esc(profile.role)}</div>
+            <h3 class="mt-3 font-serif text-3xl text-ink-950">${esc(profile.name)}</h3>
+            <p class="mt-4 text-sm leading-7 text-ink-500">${esc(profile.summary)}</p>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4"><div class="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">Affiliation</div><div class="mt-2 text-sm leading-7 text-ink-700">${esc(profile.affiliation)}</div></div>
+            <div class="rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4"><div class="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">Focus</div><div class="mt-2 text-sm leading-7 text-ink-700">${esc(profile.focus)}</div></div>
+            <div class="rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4"><div class="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">Contact</div><div class="mt-2 text-sm leading-7 text-ink-700">${esc(profile.email || "On request")}</div></div>
+            <div class="rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4"><div class="text-xs font-semibold uppercase tracking-[0.22em] text-ink-500">Lab</div><div class="mt-2 text-sm leading-7 text-ink-700">HAX Lab</div></div>
           </div>
         </article>
       </div>
-    `
+    `,
+    { eyebrow: "Profile" }
   ) + sectionWrap(
     "Selected Highlights",
     "A concise slice of the member's current trajectory.",
-    renderTimeline(profile.highlights)
+    renderTimeline(profile.highlights),
+    { eyebrow: "Highlights" }
   ) + sectionWrap(
     "Background",
     "Working interests, technical base, and current role.",
     `
-      <div class="feature-split">
-        <article class="feature-copy reveal">
+      <div class="story-grid">
+        <article class="feature-card" data-reveal-item>
           ${renderDetailList(profile.details)}
           ${renderPillRow(profile.skills)}
         </article>
-        <article class="feature-copy reveal" style="--delay:0.06s;">
-          <span class="item-meta">Current frame</span>
-          <h3>${esc(profile.role)} at HAX Lab</h3>
-          <p>${esc(profile.focus)}</p>
-          <p>${esc(profile.summary)}</p>
+        <article class="feature-card" data-reveal-item>
+          <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">Current Frame</span>
+          <h3 class="mt-3 font-serif text-3xl text-ink-950">${esc(profile.role)} at HAX Lab</h3>
+          <p class="mt-4 text-sm leading-7 text-ink-500">${esc(profile.focus)}</p>
+          <p class="mt-4 text-sm leading-7 text-ink-500">${esc(profile.summary)}</p>
         </article>
       </div>
-    `
+    `,
+    { eyebrow: "Background" }
   );
 }
 
 function renderPage(pageKey) {
   const main = document.querySelector(".site-shell");
   if (!main) return;
+  main.className = "site-shell page-shell";
   let html = "";
 
   if (pageKey === "home") {
@@ -608,172 +737,200 @@ function renderPage(pageKey) {
       title: "Lab Snapshot",
       text: "The lab stays close to real settings, from assistive mobility and forensics to industrial simulation and spatial computing systems.",
       items: [["Location", "Digital Building B111, KNUT"], ["Contact", "kim01@kumoh.ac.kr"], ["Current signal", "NRF Young Investigator Research Program"]],
-    }, { kicker: "Current project", title: "Assistive XR and digital twin-linked systems", image: "assets/mirror/b39f33c30b09c769ac47.png" });
-    html += sectionWrap("Lab Snapshot", "A compact orientation to the lab's base and current mode.", renderStats(LAB_METRICS), "section--tight");
-    html += sectionWrap("Research Themes", "The lab returns to a small set of recurring questions about interaction, embodiment, and coordination.", renderCards(RESEARCH_TRACKS));
-    html += sectionWrap("Featured Program", "A flagship direction that captures the lab's human-centered applied research style.", renderFeatureSplit(FEATURED_PROJECT));
-    html += sectionWrap("Recent Signals", "Recent public milestones across grants, conferences, and publication activity.", renderTimeline(NEWS_ITEMS.slice(0, 6)));
-    html += sectionWrap("Selected Outputs", "Recent publication activity across conference and journal venues.", renderPublications(PUBLICATION_GROUPS));
-    html += sectionWrap("Around the Lab", "A visual slice of demos, conferences, and lab life.", renderGallery(GALLERY.slice(0, 4)));
+    }, { kicker: "Current project", title: "Assistive XR and digital twin-linked systems", image: "assets/mirror/b39f33c30b09c769ac47.png" }, { themeKey: "home", eyebrow: "HAX Lab" });
+    html += sectionWrap("Lab Snapshot", "A compact orientation to the lab's base and current mode.", renderStats(LAB_METRICS), { className: "section--tight", eyebrow: "Overview" });
+    html += sectionWrap("Research Themes", "The lab returns to a small set of recurring questions about interaction, embodiment, and coordination.", renderCards(RESEARCH_TRACKS), { eyebrow: "Research" });
+    html += sectionWrap("Featured Program", "A flagship direction that captures the lab's human-centered applied research style.", renderFeatureSplit(FEATURED_PROJECT), { eyebrow: "Current Program" });
+    html += sectionWrap("Recent Signals", "Recent public milestones across grants, conferences, and publication activity.", renderTimeline(NEWS_ITEMS.slice(0, 6)), { eyebrow: "Updates" });
+    html += sectionWrap("Selected Outputs", "Recent publication activity across conference and journal venues.", renderPublications(PUBLICATION_GROUPS), { eyebrow: "Publications" });
+    html += sectionWrap("Around the Lab", "A visual slice of demos, conferences, and lab life.", renderGallery(GALLERY.slice(0, 4)), { eyebrow: "Culture" });
   } else if (pageKey === "news") {
     html += hero("Research updates, conference activity, and project milestones.", "The lab's public signal is shaped by conferences, publication outcomes, funded programs, and the steady addition of working systems.", ["Updates", "Conferences", "Projects"], {
       title: "Recent pattern",
       text: "Most recent updates cluster around VRST, ISMAR, funded projects, and publication outcomes during 2025 and 2026.",
       items: [["Latest", "2026.03.13 NRF Young Investigator Research Program"], ["Conference cycle", "VRST 2025 and ISMAR 2025"], ["Applied range", "Mobility, forensics, maintenance"]],
-    }, { kicker: "Recent moment", title: "Conference visibility and applied programs", image: "assets/mirror/2023e0c74d0a9fbe3d74.jpg" });
-    html += sectionWrap("At a Glance", "The current update flow is driven by research visibility and funded work.", renderStats([["Latest grant", "NRF Young Investigator"], ["Conference span", "VRST and ISMAR"], ["Project mode", "Applied XR plus AI"], ["Student signal", "Strong paper participation"]]), "section--tight");
-    html += sectionWrap("Timeline", "Recent updates in reverse chronological order.", renderTimeline(NEWS_ITEMS));
+    }, { kicker: "Recent moment", title: "Conference visibility and applied programs", image: "assets/mirror/2023e0c74d0a9fbe3d74.jpg" }, { themeKey: "news", eyebrow: "News" });
+    html += sectionWrap("At a Glance", "The current update flow is driven by research visibility and funded work.", renderStats([["Latest grant", "NRF Young Investigator"], ["Conference span", "VRST and ISMAR"], ["Project mode", "Applied XR plus AI"], ["Student signal", "Strong paper participation"]]), { className: "section--tight", eyebrow: "Overview" });
+    html += sectionWrap("Timeline", "Recent updates in reverse chronological order.", renderTimeline(NEWS_ITEMS), { eyebrow: "Chronology" });
   } else if (pageKey === "people") {
     html += hero("A compact team building XR systems, interaction experiments, and applied prototypes.", "HAX Lab combines faculty direction, graduate research, undergraduate making, and project-driven collaboration inside a deliberately small working group.", ["Faculty", "Graduate", "Undergraduate", "Research Intern"], {
       title: "Team snapshot",
       text: "Current members cover research framing, system implementation, and lab execution across projects and conference output.",
       items: [["Director", "Youngwon Kim"], ["Graduate core", "Jemin Lee and Jeonghyeon Kim"], ["Current roster", "Hyeongjun Kang, Donghee Lee, Yoongi Nam"]],
-    }, { kicker: "People", title: "Research plus build", image: "assets/mirror/962c9e7d31fd258ee777.jpg" });
-    html += sectionWrap("Team Structure", "A quick view of the lab's current size and operating shape.", renderStats(PEOPLE_STATS), "section--tight");
-    html += sectionWrap("Core Members", "Faculty, graduate students, and current contributors with direct links to available profile pages.", renderMembers(CORE_MEMBERS));
-    html += sectionWrap("Supporting Roles", "Additional context around the broader member network around the lab.", renderCards(SUPPORTING_MEMBERS));
+    }, { kicker: "People", title: "Research plus build", image: "assets/mirror/962c9e7d31fd258ee777.jpg" }, { themeKey: "people", eyebrow: "People" });
+    html += sectionWrap("Team Structure", "A quick view of the lab's current size and operating shape.", renderStats(PEOPLE_STATS), { className: "section--tight", eyebrow: "Roster" });
+    html += sectionWrap("Core Members", "Faculty, graduate students, and current contributors with direct links to available profile pages.", renderMembers(CORE_MEMBERS), { eyebrow: "Members" });
+    html += sectionWrap("Supporting Roles", "Additional context around the broader member network around the lab.", renderCards(SUPPORTING_MEMBERS), { eyebrow: "Context" });
   } else if (pageKey === "projects") {
     html += hero("Projects stay close to actual environments instead of ending as isolated demos.", "The portfolio spans assistive XR, fire-scene reconstruction, predictive maintenance, traffic analysis, and digital twin-linked spatial computing.", ["Applied XR", "Digital twin", "Forensics", "AI systems"], {
       title: "Project pattern",
       text: "Long-horizon funded research is balanced with shorter applied programs and institutional collaborations.",
       items: [["Flagship", "XR-Physical AI for visually impaired users"], ["Applied contexts", "Forensics, mobility, maintenance"], ["Partners", "NRF, NIA, NFS, KETI, KIDI"]],
-    }, { kicker: "Portfolio", title: "From labs to real environments", image: "assets/mirror/aec8c549fa5d4f3f0234.png" });
-    html += sectionWrap("Selected Projects", "Current and recent projects show how the lab translates research questions into funded systems work.", renderCards(PROJECTS));
-    html += sectionWrap("Why This Matters", "The lab's applied mode is easiest to read through one focused example.", renderFeatureSplit(FEATURED_PROJECT));
+    }, { kicker: "Portfolio", title: "From labs to real environments", image: "assets/mirror/aec8c549fa5d4f3f0234.png" }, { themeKey: "projects", eyebrow: "Projects" });
+    html += sectionWrap("Selected Projects", "Current and recent projects show how the lab translates research questions into funded systems work.", renderCards(PROJECTS), { eyebrow: "Portfolio" });
+    html += sectionWrap("Why This Matters", "The lab's applied mode is easiest to read through one focused example.", renderFeatureSplit(FEATURED_PROJECT), { eyebrow: "Featured" });
   } else if (pageKey === "research") {
     html += hero("Research is framed around how interaction becomes intuitive, coordinated, and usable in XR.", "The lab approaches immersive systems through concrete problems such as referencing, grasping, mobility, accessibility, embodiment, and collaboration.", ["Multimodal", "Embodied", "Collaborative", "Accessible"], {
       title: "Method pattern",
       text: "The lab builds working systems and evaluates them against real interaction questions instead of stopping at interface sketches.",
       items: [["Interaction", "Gesture, gaze, speech, touch"], ["Evaluation", "Performance, workload, presence"], ["Contexts", "Simulation, inclusion, collaboration"]],
-    }, { kicker: "Research mode", title: "System building with evaluation", image: "assets/mirror/84f8f1bb489ec038666a.png" });
-    html += sectionWrap("Current Research Tracks", "The main directions that organize the lab's recent output.", renderCards(RESEARCH_TRACKS));
-    html += sectionWrap("Working Method", "The lab's recurring way of moving from idea to evidence.", renderCards(METHODS));
+    }, { kicker: "Research mode", title: "System building with evaluation", image: "assets/mirror/84f8f1bb489ec038666a.png" }, { themeKey: "research", eyebrow: "Research" });
+    html += sectionWrap("Current Research Tracks", "The main directions that organize the lab's recent output.", renderCards(RESEARCH_TRACKS), { eyebrow: "Tracks" });
+    html += sectionWrap("Working Method", "The lab's recurring way of moving from idea to evidence.", renderCards(METHODS), { eyebrow: "Method" });
   } else if (pageKey === "publications") {
     html += hero("Publications track both core XR questions and applied immersive system output.", "Recent papers cluster around collaborative XR, immersive interaction, body estimation, accessible navigation, and multimodal coordination.", ["VRST", "ISMAR", "IEEE Access", "Sensors"], {
       title: "Output snapshot",
       text: "The publication pattern shows a strong link between system building, evaluation, and practical design guidance.",
       items: [["Conference", "ACM VRST and IEEE ISMAR"], ["Journal", "IEEE Access, Sensors, Electronics"], ["Style", "System plus evaluation plus insight"]],
-    }, { kicker: "Output", title: "Conference and journal rhythm", image: "assets/mirror/c6fb81300faee7cddb1c.jpg" });
-    html += sectionWrap("Selected Papers", "A compact publication board for the recent cycle of the lab.", renderPublications(PUBLICATION_GROUPS));
-    html += sectionWrap("Reading the Pattern", "What the recent output says about the lab's direction.", renderCards(PUBLICATION_CARDS));
+    }, { kicker: "Output", title: "Conference and journal rhythm", image: "assets/mirror/c6fb81300faee7cddb1c.jpg" }, { themeKey: "publications", eyebrow: "Publications" });
+    html += sectionWrap("Selected Papers", "A compact publication board for the recent cycle of the lab.", renderPublications(PUBLICATION_GROUPS), { eyebrow: "Papers" });
+    html += sectionWrap("Reading the Pattern", "What the recent output says about the lab's direction.", renderCards(PUBLICATION_CARDS), { eyebrow: "Interpretation" });
   } else if (pageKey === "awards") {
     html += hero("Recognition reflects engineering execution, applied research, and student-led output.", "Awards in the recent cycle sit close to capstone work, contests, and public-facing project quality.", ["Capstone", "Contest", "Recognition"], {
       title: "Recognition snapshot",
       text: "The recent award pattern shows the lab's work landing in both academic and practical contexts.",
       items: [["Recent", "Kit Engineering Fair 2025"], ["Student-led", "GameAlfy and AI Capstone"], ["Style", "Execution plus presentation"]],
-    }, { kicker: "Recognition", title: "Where the work is being noticed", image: "assets/mirror/962c9e7d31fd258ee777.jpg" });
-    html += sectionWrap("Selected Recognition", "Recent awards and honors tied to work from the lab.", renderTimeline(AWARDS));
+    }, { kicker: "Recognition", title: "Where the work is being noticed", image: "assets/mirror/962c9e7d31fd258ee777.jpg" }, { themeKey: "awards", eyebrow: "Awards" });
+    html += sectionWrap("Selected Recognition", "Recent awards and honors tied to work from the lab.", renderTimeline(AWARDS), { eyebrow: "Recognition" });
   } else if (pageKey === "gallery") {
     html += hero("The lab's visual record is built from demos, conferences, travel, celebrations, and making sessions.", "These moments show the rhythm of the lab across public presentation, prototyping, and shared studio time.", ["Conference", "Demo", "Studio", "Milestones"], {
       title: "Visual snapshot",
       text: "Recent images trace the cycle from project work to conference visibility and everyday lab culture.",
       items: [["Conference", "VRST, ISMAR, and CHI"], ["Lab life", "Celebrations, demos, reviews"], ["Cycle", "2024 and 2025 selected scenes"]],
-    }, { kicker: "Gallery", title: "Selected scenes from the lab", image: "assets/mirror/7d0d6190edb2c5cba614.jpg" });
-    html += sectionWrap("Selected Scenes", "A curated visual record from the recent lab cycle.", renderGallery(GALLERY));
+    }, { kicker: "Gallery", title: "Selected scenes from the lab", image: "assets/mirror/7d0d6190edb2c5cba614.jpg" }, { themeKey: "gallery", eyebrow: "Gallery" });
+    html += sectionWrap("Selected Scenes", "A curated visual record from the recent lab cycle.", renderGallery(GALLERY), { eyebrow: "Scenes" });
   } else if (pageKey === "courses") {
     html += hero("Teaching is tied to how students build, test, critique, and present immersive systems.", "The learning direction centers on XR prototyping, HCI, evaluation, research practice, and complete demo-oriented outputs.", ["XR prototyping", "HCI", "Research practice"], {
       title: "Learning snapshot",
       text: "Course-linked learning connects implementation, experimentation, and communication in one loop.",
       items: [["Undergraduate", "Interaction and XR foundations"], ["Graduate", "Seminar and research practice"], ["Format", "Prototype, evaluate, iterate"]],
-    }, { kicker: "Teaching", title: "Making and critique together", image: "assets/mirror/e0d7080c5476cb494898.jpg" });
-    html += sectionWrap("Teaching Directions", "The lab's teaching flow centers on practical making and research communication.", renderCards(COURSES));
+    }, { kicker: "Teaching", title: "Making and critique together", image: "assets/mirror/e0d7080c5476cb494898.jpg" }, { themeKey: "courses", eyebrow: "Courses" });
+    html += sectionWrap("Teaching Directions", "The lab's teaching flow centers on practical making and research communication.", renderCards(COURSES), { eyebrow: "Learning" });
   } else if (PROFILE_DATA[pageKey]) {
     html += renderProfile(pageKey);
   } else {
-    html += hero("Human-centered XR and AX Lab", "HAX Lab explores immersive interaction, collaborative systems, and applied human-centered computing.", ["XR", "HCI", "Interaction"], {
+    html += hero("Human-Centered XR Lab", "HAX Lab explores immersive interaction, collaborative systems, and applied human-centered computing.", ["XR", "HCI", "Interaction"], {
       title: "Lab snapshot",
       text: "A compact research lab site centered on immersive interaction and real systems work.",
       items: [["Location", "Digital Building B111, KNUT"], ["Contact", "kim01@kumoh.ac.kr"], ["Focus", "Human-centered XR"]],
-    });
+    }, undefined, { themeKey: pageKey, eyebrow: "HAX Lab" });
   }
 
-  html += `<footer class="site-footer reveal" style="--delay:0.18s;"><p>&copy; ${new Date().getFullYear()} HAX Lab | Digital Building B111, Kumoh National Institute of Technology | kim01@kumoh.ac.kr</p></footer>`;
+  html += `<footer class="footer-card">&copy; ${new Date().getFullYear()} HAX Lab | Digital Building B111, Kumoh National Institute of Technology | kim01@kumoh.ac.kr</footer>`;
   main.innerHTML = html;
 }
 
-async function initHeroScene(pageKey) {
+function initHeroScene() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const canvas = document.querySelector(".hero-canvas");
-  const heroEl = document.querySelector(".hero");
-  if (!canvas || !heroEl) return;
-  try {
-    const THREE = await import("https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js");
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 0, 8.8);
-    const accent = new THREE.Color(HERO_COLORS[pageKey] || HERO_COLORS.profile);
-    const geometry = new THREE.PlaneGeometry(14, 8.8, 36, 26);
-    const base = geometry.attributes.position.array.slice(0);
-    const wire = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: accent, wireframe: true, transparent: true, opacity: 0.17 }));
-    wire.rotation.x = -0.96;
-    wire.rotation.z = -0.22;
-    scene.add(wire);
-    const points = new THREE.Points(geometry, new THREE.PointsMaterial({ color: new THREE.Color("#fff7dc"), size: 0.08, transparent: true, opacity: 0.9 }));
-    points.rotation.copy(wire.rotation);
-    points.position.z = 0.05;
-    scene.add(points);
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 28), new THREE.MeshBasicMaterial({ color: new THREE.Color("#f2b655"), transparent: true, opacity: 0.1 }));
-    halo.position.set(3.2, 1.8, -1.6);
-    scene.add(halo);
-    const ring = new THREE.LineLoop(
-      new THREE.BufferGeometry().setFromPoints(Array.from({ length: 48 }, (_, index) => {
-        const angle = (Math.PI * 2 * index) / 48;
-        return new THREE.Vector3(Math.cos(angle) * 1.7, Math.sin(angle) * 1.7, 0);
-      })),
-      new THREE.LineBasicMaterial({ color: new THREE.Color("#fff7dc"), transparent: true, opacity: 0.18 })
-    );
-    ring.position.set(-2.7, -1.5, -1.4);
-    scene.add(ring);
-    let pointerX = 0;
-    let pointerY = 0;
-    heroEl.addEventListener("pointermove", (event) => {
-      const rect = heroEl.getBoundingClientRect();
-      pointerX = ((event.clientX - rect.left) / rect.width - 0.5) * 0.38;
-      pointerY = ((event.clientY - rect.top) / rect.height - 0.5) * 0.24;
-    });
-    function resize() {
-      const rect = heroEl.getBoundingClientRect();
-      renderer.setSize(rect.width, rect.height, false);
-      camera.aspect = rect.width / rect.height;
-      camera.updateProjectionMatrix();
-    }
-    resize();
-    window.addEventListener("resize", resize);
-    const clock = new THREE.Clock();
-    const positions = geometry.attributes.position;
-    function animate() {
-      const elapsed = clock.getElapsedTime();
-      const array = positions.array;
-      for (let i = 0; i < array.length; i += 3) {
-        const x = base[i];
-        const y = base[i + 1];
-        array[i + 2] = Math.sin(x * 0.82 + elapsed * 1.3) * 0.25 + Math.cos(y * 1.08 + elapsed * 0.8) * 0.18;
+  animate(".site-nav-wrap", {
+    opacity: [0, 1],
+    translateY: [-14, 0],
+    duration: 620,
+    ease: "outCubic",
+  });
+  animate(".js-hero-line", {
+    opacity: [0, 1],
+    translateY: [28, 0],
+    duration: 900,
+    delay: stagger(90),
+    ease: "outExpo",
+  });
+  animate(".js-hero-panel", {
+    opacity: [0, 1],
+    translateY: [36, 0],
+    duration: 1000,
+    delay: stagger(120, { start: 180 }),
+    ease: "outExpo",
+  });
+  animate(".js-orb-a", {
+    translateX: ["-2%", "3%"],
+    translateY: ["-2%", "4%"],
+    scale: [1, 1.08],
+    duration: 5200,
+    loop: true,
+    alternate: true,
+    ease: "inOutSine",
+  });
+  animate(".js-orb-b", {
+    translateX: ["3%", "-2%"],
+    translateY: ["2%", "-3%"],
+    scale: [1.02, 0.94],
+    duration: 6100,
+    loop: true,
+    alternate: true,
+    ease: "inOutSine",
+  });
+
+  const revealObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      observer.unobserve(entry.target);
+      animate(entry.target, {
+        opacity: [0, 1],
+        translateY: [32, 0],
+        duration: 820,
+        ease: "outCubic",
+      });
+      const nested = entry.target.querySelectorAll("[data-reveal-item]");
+      if (nested.length) {
+        animate(nested, {
+          opacity: [0, 1],
+          translateY: [18, 0],
+          duration: 680,
+          delay: stagger(70, { start: 120 }),
+          ease: "outCubic",
+        });
       }
-      positions.needsUpdate = true;
-      wire.rotation.z += (pointerX - wire.rotation.z * 0.12) * 0.015;
-      points.rotation.z = wire.rotation.z;
-      wire.rotation.x += (-0.96 + pointerY - wire.rotation.x) * 0.03;
-      points.rotation.x = wire.rotation.x;
-      halo.position.x = 3.2 + Math.sin(elapsed * 0.55) * 0.36;
-      halo.position.y = 1.8 + Math.cos(elapsed * 0.44) * 0.24;
-      ring.rotation.z = elapsed * 0.12;
-      ring.position.x = -2.7 + Math.cos(elapsed * 0.35) * 0.12;
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
-    }
-    animate();
-  } catch (error) {
-    // Decorative effect only.
-  }
+    });
+  }, { threshold: 0.16 });
+
+  document.querySelectorAll("[data-reveal]").forEach((element) => {
+    element.style.opacity = "0";
+    element.style.transform = "translateY(32px)";
+    element.querySelectorAll("[data-reveal-item]").forEach((item) => {
+      item.style.opacity = "0";
+      item.style.transform = "translateY(18px)";
+    });
+    revealObserver.observe(element);
+  });
+
+  const parallaxItems = [...document.querySelectorAll("[data-parallax]")].map((element) => ({
+    element,
+    animation: animate(element, {
+      translateY: [Number(element.dataset.parallax || -20), Number(element.dataset.parallax || -20) * -1],
+      duration: 1000,
+      ease: "linear",
+      autoplay: false,
+    }),
+  }));
+
+  if (!parallaxItems.length) return;
+
+  let ticking = false;
+  const updateParallax = () => {
+    ticking = false;
+    const viewport = window.innerHeight;
+    parallaxItems.forEach((item) => {
+      const rect = item.element.getBoundingClientRect();
+      const progress = clampValue((viewport - rect.top) / (viewport + rect.height), 0, 1);
+      item.animation.seek(progress * 1000);
+    });
+  };
+
+  updateParallax();
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(updateParallax);
+  }, { passive: true });
+  window.addEventListener("resize", updateParallax);
 }
 
 function updateMeta(pageKey) {
   const meta = document.querySelector('meta[name="description"]');
   const profile = PROFILE_DATA[pageKey];
   const titles = {
-    home: "HAX Lab | Human-centered XR and AX",
+    home: "HAX Lab | Human-Centered XR Lab",
     news: "HAX Lab | News",
     people: "HAX Lab | People",
     projects: "HAX Lab | Projects",
@@ -795,7 +952,7 @@ function init() {
   setupMenu(PROFILE_DATA[pageKey] ? "people" : pageKey);
   updateMeta(pageKey);
   renderPage(pageKey);
-  initHeroScene(HERO_COLORS[pageKey] ? pageKey : "profile");
+  initHeroScene();
 }
 
 init();
