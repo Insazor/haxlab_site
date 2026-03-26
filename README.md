@@ -1,21 +1,21 @@
 ﻿# HaxLab Site
 
-연구실 홈페이지(학술형) 1차 버전입니다.
+Google Sites 참고 구조를 반영한 연구실 홈페이지(학술형)입니다.
 
 ## Pages
 
 - `index.html` - Home
+- `news.html` - News
 - `people.html` - People
+- `projects.html` - Projects
 - `research.html` - Research
 - `publications.html` - Publications
+- `awards.html` - Awards
+- `gallery.html` - Gallery
+- `courses.html` - Courses
 - `contact.html` - Contact
 
-## Local Preview
+## Deploy
 
-브라우저에서 `index.html`을 열면 바로 확인할 수 있습니다.
-
-## Deploy (GitHub Pages)
-
-1. GitHub 저장소 `Settings > Pages`로 이동
-2. `Build and deployment`에서 `Source: Deploy from a branch` 선택
-3. `Branch: main / (root)` 선택 후 저장
+GitHub Pages에서 `main` 브랜치 `/(root)`를 배포 소스로 설정하면 됩니다.
+배포 URL: `https://insazor.github.io/haxlab_site/`
