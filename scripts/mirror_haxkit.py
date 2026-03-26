@@ -27,6 +27,14 @@ ASSET_DIR = ROOT / "assets" / "mirror"
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; HaxLabMirror/1.0)"})
 SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+NAV_BLOCK_RE = re.compile(
+    r"<!-- HAX_STATIC_NAV_START -->.*?<!-- HAX_STATIC_NAV_END -->",
+    re.IGNORECASE | re.DOTALL,
+)
+NAV_STYLE_RE = re.compile(
+    r"/\* HAX_STATIC_NAV_STYLE_START \*/.*?/\* HAX_STATIC_NAV_STYLE_END \*/",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def slug_to_filename(slug: str) -> str:
@@ -174,6 +182,72 @@ def sanitize_for_static(html_text: str) -> str:
     return SCRIPT_TAG_RE.sub("", html_text)
 
 
+def build_static_nav(current_slug: str) -> str:
+    items = [
+        ("home", "index.html", "Home"),
+        ("news", "news.html", "News"),
+        ("people", "people.html", "People"),
+        ("projects", "projects.html", "Projects"),
+        ("research", "research.html", "Research"),
+        ("publications", "publications.html", "Publications"),
+        ("awards", "awards.html", "Awards"),
+        ("gallery", "gallery.html", "Gallery"),
+        ("courses", "courses.html", "Courses"),
+    ]
+    links: List[str] = []
+    for slug, href, label in items:
+        cls = "active" if slug == current_slug else ""
+        links.append(f'<a class="{cls}" href="{href}">{label}</a>')
+    links_html = "".join(links)
+    return (
+        "<!-- HAX_STATIC_NAV_START -->"
+        '<nav class="hax-static-nav" aria-label="Primary">'
+        '<div class="hax-static-nav__inner">'
+        '<span class="hax-static-nav__brand">HAX Lab</span>'
+        f"{links_html}"
+        "</div>"
+        "</nav>"
+        "<!-- HAX_STATIC_NAV_END -->"
+    )
+
+
+def inject_static_nav(html_text: str, slug: str) -> str:
+    nav_style = (
+        "/* HAX_STATIC_NAV_STYLE_START */\n"
+        "<style>\n"
+        ".hax-static-nav{position:sticky;top:0;z-index:99999;background:#0f3f70;border-bottom:1px solid #0a2b4f;}\n"
+        ".hax-static-nav__inner{max-width:1200px;margin:0 auto;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}\n"
+        ".hax-static-nav__brand{color:#fff;font:700 14px/1 Arial,sans-serif;margin-right:4px;}\n"
+        ".hax-static-nav a{color:#eaf1ff;text-decoration:none;font:600 13px/1 Arial,sans-serif;padding:6px 8px;border-radius:6px;}\n"
+        ".hax-static-nav a:hover{background:#1e568f;}\n"
+        ".hax-static-nav a.active{background:#fff;color:#0f3f70;}\n"
+        "@media (max-width:640px){.hax-static-nav__inner{padding:8px 10px}.hax-static-nav a{font-size:12px;padding:5px 7px}}\n"
+        "</style>\n"
+        "/* HAX_STATIC_NAV_STYLE_END */"
+    )
+
+    cleaned = NAV_BLOCK_RE.sub("", html_text)
+    cleaned = NAV_STYLE_RE.sub("", cleaned)
+
+    nav_html = build_static_nav(slug)
+    if re.search(r"<body\b[^>]*>", cleaned, flags=re.IGNORECASE):
+        cleaned = re.sub(
+            r"(<body\b[^>]*>)",
+            r"\1" + nav_html,
+            cleaned,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    else:
+        cleaned = nav_html + cleaned
+
+    if "</head>" in cleaned.lower():
+        cleaned = re.sub(r"</head>", nav_style + "</head>", cleaned, count=1, flags=re.IGNORECASE)
+    else:
+        cleaned = nav_style + cleaned
+    return cleaned
+
+
 def mirror_site() -> None:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     slugs = discover_slugs(SEED_SLUGS)
@@ -194,6 +268,7 @@ def mirror_site() -> None:
             page_html = page_html.replace(js_escape_url(decoded), js_escape_url(local))
 
         page_html = sanitize_for_static(page_html)
+        page_html = inject_static_nav(page_html, slug)
 
         out_file = ROOT / slug_to_filename(slug)
         out_file.write_text(page_html, encoding="utf-8")
