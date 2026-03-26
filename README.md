@@ -1,21 +1,28 @@
-﻿# HaxLab Site
+﻿# HaxLab Site Mirror
 
-Google Sites 참고 구조를 반영한 연구실 홈페이지(학술형)입니다.
+이 저장소는 아래 Google Sites를 정적 HTML로 미러링한 버전입니다.
 
-## Pages
+- Source: https://sites.google.com/view/hax-kit/home
 
-- `index.html` - Home
-- `news.html` - News
-- `people.html` - People
-- `projects.html` - Projects
-- `research.html` - Research
-- `publications.html` - Publications
-- `awards.html` - Awards
-- `gallery.html` - Gallery
-- `courses.html` - Courses
-- `contact.html` - Contact
+## Included Pages
 
-## Deploy
+- index.html (home)
+- news.html
+- people.html
+- projects.html
+- research.html
+- publications.html
+- awards.html
+- gallery.html
+- courses.html
+- home.html (호환 링크용)
 
-GitHub Pages에서 `main` 브랜치 `/(root)`를 배포 소스로 설정하면 됩니다.
-배포 URL: `https://insazor.github.io/haxlab_site/`
+## Assets
+
+- 페이지 내 이미지 리소스는 `assets/mirror/`에 저장됩니다.
+
+## Refresh Mirror
+
+```bash
+python scripts/mirror_haxkit.py
+```
