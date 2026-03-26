@@ -34,6 +34,7 @@ CORE_NAV = [
     ("courses", "courses.html", "Courses"),
 ]
 CORE_FILE_MAP = {k: v for k, v, _ in CORE_NAV}
+NAV_CACHE_BUSTER = "20260326"
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets" / "mirror"
@@ -255,13 +256,14 @@ def build_static_nav(current_key: str) -> str:
     links: List[str] = []
     for item_key, href, label in CORE_NAV:
         cls = "active" if nav_is_active(item_key, current_key) else ""
-        links.append(f'<a class="{cls}" href="{href}">{label}</a>')
+        nav_href = f"{href}?v={NAV_CACHE_BUSTER}"
+        links.append(f'<a class="{cls}" href="{nav_href}">{label}</a>')
 
     return (
         "<!-- HAX_STATIC_NAV_START -->"
         '<nav class="hax-static-nav" aria-label="Primary">'
         '<div class="hax-static-nav__inner">'
-        '<a class="hax-static-nav__brand" href="index.html">HAX Lab</a>'
+        f'<a class="hax-static-nav__brand" href="index.html?v={NAV_CACHE_BUSTER}">HAX Lab</a>'
         f"{''.join(links)}"
         "</div>"
         "</nav>"
