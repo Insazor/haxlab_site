@@ -82,12 +82,44 @@ def image_ext(content_type: str, fallback_url: str) -> str:
     return ".img"
 
 
-def extract_image_urls(page_html: str) -> List[str]:
-    # Google Sites image/media hosts for this project.
-    pattern = re.compile(
-        r"https://(?:lh[0-9A-Za-z-]*\.googleusercontent\.com|play-lh\.googleusercontent\.com)[^\"'\s<>()]+"
-    )
-    return sorted(set(pattern.findall(page_html)))
+def likely_image_url(url: str) -> bool:
+    low = url.lower()
+    image_exts = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico", ".bmp", ".avif")
+    if low.endswith(image_exts):
+        return True
+    if "googleusercontent.com/sitesv/" in low:
+        return True
+    if "play-lh.googleusercontent.com" in low:
+        return True
+    if "/atari/images/" in low:
+        return True
+    return False
+
+
+def decode_candidate_url(token: str) -> str:
+    decoded = html.unescape(token)
+    decoded = decoded.replace(r"\/", "/")
+    decoded = decoded.replace(r"\x3d", "=")
+    decoded = decoded.replace(r"\u003d", "=")
+    return decoded
+
+
+def extract_image_candidates(page_html: str) -> List[Tuple[str, str]]:
+    # Capture both regular and JS-escaped URLs.
+    patterns = [
+        r"https?://[^\s\"'<>\\)]+",
+        r"https:\\\\/\\\\/[^\s\"'<>\\)]+",
+    ]
+    seen: Set[Tuple[str, str]] = set()
+    for pattern in patterns:
+        for token in re.findall(pattern, page_html):
+            decoded = decode_candidate_url(token)
+            if not decoded.startswith(("http://", "https://")):
+                continue
+            if not likely_image_url(decoded):
+                continue
+            seen.add((token, decoded))
+    return sorted(seen)
 
 
 def download_image(url_in_html: str, cache: Dict[str, str]) -> Tuple[str, str]:
@@ -102,7 +134,8 @@ def download_image(url_in_html: str, cache: Dict[str, str]) -> Tuple[str, str]:
         raise RuntimeError(f"Non-image content for URL: {decoded_url} ({content_type})")
 
     ext = image_ext(content_type, decoded_url)
-    digest = hashlib.sha1(decoded_url.encode("utf-8")).hexdigest()[:20]
+    # Use content hash so asset paths stay stable even if source URLs rotate.
+    digest = hashlib.sha1(resp.content).hexdigest()[:20]
     file_name = f"{digest}{ext}"
     target = ASSET_DIR / file_name
     if not target.exists():
@@ -144,9 +177,9 @@ def mirror_site() -> None:
         raw_html = download_page(slug)
         page_html = replace_internal_links(raw_html, slugs)
 
-        for image_url_in_html in extract_image_urls(page_html):
+        for image_url_in_html, decoded_url in extract_image_candidates(page_html):
             try:
-                decoded, local = download_image(image_url_in_html, image_cache)
+                decoded, local = download_image(decoded_url, image_cache)
             except Exception:
                 # If any asset fails, keep original URL so page still renders.
                 continue
@@ -159,6 +192,21 @@ def mirror_site() -> None:
         if slug == "home":
             # Keep home.html for compatibility with mirrored links.
             (ROOT / "home.html").write_text(page_html, encoding="utf-8")
+
+    # Keep only assets referenced by generated HTML pages.
+    html_files = [ROOT / slug_to_filename(s) for s in slugs] + [ROOT / "home.html"]
+    used_assets: Set[str] = set()
+    local_asset_pattern = re.compile(r"assets/mirror/[A-Za-z0-9._-]+")
+    for html_file in html_files:
+        if not html_file.exists():
+            continue
+        text = html_file.read_text(encoding="utf-8", errors="ignore")
+        used_assets.update(local_asset_pattern.findall(text))
+
+    for asset in ASSET_DIR.glob("*"):
+        rel = f"assets/mirror/{asset.name}"
+        if rel not in used_assets and asset.is_file():
+            asset.unlink()
 
     # Remove pages that are not part of the source site.
     stale_files = [ROOT / "contact.html"]
