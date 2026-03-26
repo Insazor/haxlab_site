@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets" / "mirror"
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; HaxLabMirror/1.0)"})
+SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
 
 
 def slug_to_filename(slug: str) -> str:
@@ -168,6 +169,11 @@ def js_escape_url(url: str) -> str:
     return url.replace("/", r"\/").replace("=", r"\x3d")
 
 
+def sanitize_for_static(html_text: str) -> str:
+    # Google Sites runtime scripts can trigger reload loops outside original hosting.
+    return SCRIPT_TAG_RE.sub("", html_text)
+
+
 def mirror_site() -> None:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     slugs = discover_slugs(SEED_SLUGS)
@@ -186,6 +192,8 @@ def mirror_site() -> None:
             page_html = page_html.replace(image_url_in_html, local)
             page_html = page_html.replace(decoded, local)
             page_html = page_html.replace(js_escape_url(decoded), js_escape_url(local))
+
+        page_html = sanitize_for_static(page_html)
 
         out_file = ROOT / slug_to_filename(slug)
         out_file.write_text(page_html, encoding="utf-8")
