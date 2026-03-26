@@ -43,7 +43,10 @@ SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; HaxLabMirror/2.0
 PAGE_LINK_RE = re.compile(r"(?:https://sites\.google\.com)?/view/hax-kit/([^\s\"'<>?#]+(?:/[^\s\"'<>?#]+)*)")
 SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
 NAV_BLOCK_RE = re.compile(r"<!-- HAX_STATIC_NAV_START -->.*?<!-- HAX_STATIC_NAV_END -->", re.IGNORECASE | re.DOTALL)
-NAV_STYLE_RE = re.compile(r"/\* HAX_STATIC_NAV_STYLE_START \*/.*?/\* HAX_STATIC_NAV_STYLE_END \*/", re.IGNORECASE | re.DOTALL)
+NAV_STYLE_RE = re.compile(
+    r"/\* HAX_STATIC_NAV_STYLE_START \*/.*?/\* HAX_STATIC_NAV_STYLE_END \*/|<style id=\"hax-static-nav-style\"[^>]*>.*?</style>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def normalize_page_key(raw_key: str) -> str:
@@ -268,8 +271,7 @@ def build_static_nav(current_key: str) -> str:
 
 def inject_static_nav(html_text: str, page_key: str) -> str:
     nav_style = (
-        "/* HAX_STATIC_NAV_STYLE_START */\n"
-        "<style>\n"
+        '<style id="hax-static-nav-style">\n'
         "#atIdViewHeader,.dZA9kd,.LqzjUe{display:none!important;}\n"
         "body{padding-top:90px!important;}\n"
         ".hax-static-nav{position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:12px 14px;"
@@ -285,8 +287,7 @@ def inject_static_nav(html_text: str, page_key: str) -> str:
         ".hax-static-nav a:hover{background:rgba(255,255,255,.2);color:#fff;transform:translateY(-1px);}\n"
         ".hax-static-nav a.active{background:#fff;color:#0d365c;box-shadow:0 2px 10px rgba(255,255,255,.25);}\n"
         "@media (max-width:760px){body{padding-top:112px!important}.hax-static-nav{padding:10px 10px}.hax-static-nav__inner{padding:10px 11px}.hax-static-nav a{font-size:12px;padding:8px 9px}}\n"
-        "</style>\n"
-        "/* HAX_STATIC_NAV_STYLE_END */"
+        "</style>"
     )
 
     cleaned = NAV_BLOCK_RE.sub("", html_text)
