@@ -5,12 +5,13 @@ import html
 import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Set, Tuple
+from urllib.parse import quote, unquote
 
 import requests
 
 
 BASE_URL = "https://sites.google.com/view/hax-kit"
-SEED_SLUGS = [
+SEED_PAGES = [
     "home",
     "news",
     "people",
@@ -21,52 +22,105 @@ SEED_SLUGS = [
     "gallery",
     "courses",
 ]
+CORE_NAV = [
+    ("home", "index.html", "Home"),
+    ("news", "news.html", "News"),
+    ("people", "people.html", "People"),
+    ("projects", "projects.html", "Projects"),
+    ("research", "research.html", "Research"),
+    ("publications", "publications.html", "Publications"),
+    ("awards", "awards.html", "Awards"),
+    ("gallery", "gallery.html", "Gallery"),
+    ("courses", "courses.html", "Courses"),
+]
+CORE_FILE_MAP = {k: v for k, v, _ in CORE_NAV}
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets" / "mirror"
 SESSION = requests.Session()
-SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; HaxLabMirror/1.0)"})
+SESSION.headers.update({"User-Agent": "Mozilla/5.0 (compatible; HaxLabMirror/2.0)"})
+
+PAGE_LINK_RE = re.compile(r"(?:https://sites\.google\.com)?/view/hax-kit/([^\s\"'<>?#]+(?:/[^\s\"'<>?#]+)*)")
 SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
-NAV_BLOCK_RE = re.compile(
-    r"<!-- HAX_STATIC_NAV_START -->.*?<!-- HAX_STATIC_NAV_END -->",
-    re.IGNORECASE | re.DOTALL,
-)
-NAV_STYLE_RE = re.compile(
-    r"/\* HAX_STATIC_NAV_STYLE_START \*/.*?/\* HAX_STATIC_NAV_STYLE_END \*/",
-    re.IGNORECASE | re.DOTALL,
-)
+NAV_BLOCK_RE = re.compile(r"<!-- HAX_STATIC_NAV_START -->.*?<!-- HAX_STATIC_NAV_END -->", re.IGNORECASE | re.DOTALL)
+NAV_STYLE_RE = re.compile(r"/\* HAX_STATIC_NAV_STYLE_START \*/.*?/\* HAX_STATIC_NAV_STYLE_END \*/", re.IGNORECASE | re.DOTALL)
 
 
-def slug_to_filename(slug: str) -> str:
-    return "index.html" if slug == "home" else f"{slug}.html"
+def normalize_page_key(raw_key: str) -> str:
+    key = html.unescape(raw_key)
+    key = unquote(key)
+    key = key.replace(r"\/", "/")
+    prefixes = (
+        "https://sites.google.com/view/hax-kit/",
+        "/view/hax-kit/",
+        "view/hax-kit/",
+    )
+    for prefix in prefixes:
+        if key.startswith(prefix):
+            key = key[len(prefix) :]
+    key = key.split("?", 1)[0].split("#", 1)[0]
+    key = key.strip().strip("/")
+    while key and key[-1] in {'\"', "'", "]"}:
+        key = key[:-1]
+    return key
 
 
-def discover_slugs(seed_slugs: Iterable[str]) -> List[str]:
-    slugs: Set[str] = set(seed_slugs)
-    queue: List[str] = list(seed_slugs)
-    pattern = re.compile(r"/view/hax-kit/([a-zA-Z0-9_-]+)")
-
-    while queue:
-        slug = queue.pop(0)
-        url = f"{BASE_URL}/{slug}"
-        resp = SESSION.get(url, timeout=30)
-        resp.raise_for_status()
-        page_html = resp.text
-
-        for found in pattern.findall(page_html):
-            if found in slugs:
-                continue
-            slugs.add(found)
-            queue.append(found)
-
-    return sorted(slugs)
+def page_key_to_url(page_key: str) -> str:
+    return f"{BASE_URL}/{quote(page_key, safe='/')}"
 
 
-def download_page(slug: str) -> str:
-    url = f"{BASE_URL}/{slug}"
-    resp = SESSION.get(url, timeout=30)
+def download_page(page_key: str) -> str:
+    resp = SESSION.get(page_key_to_url(page_key), timeout=30)
     resp.raise_for_status()
     return resp.text
+
+
+def discover_pages(seed_pages: Iterable[str]) -> List[str]:
+    pages: Set[str] = set()
+    queue: List[str] = []
+
+    for raw in seed_pages:
+        page = normalize_page_key(raw)
+        if not page:
+            continue
+        pages.add(page)
+        queue.append(page)
+
+    while queue:
+        page = queue.pop(0)
+        page_html = download_page(page)
+        for found_raw in PAGE_LINK_RE.findall(page_html):
+            found = normalize_page_key(found_raw)
+            if not found:
+                continue
+            if found in pages:
+                continue
+            pages.add(found)
+            queue.append(found)
+
+    return sorted(pages)
+
+
+def filename_for_page(page_key: str) -> str:
+    if page_key in CORE_FILE_MAP:
+        return CORE_FILE_MAP[page_key]
+
+    leaf = page_key.split("/")[-1]
+    safe_leaf = re.sub(r"[^A-Za-z0-9_-]+", "-", leaf).strip("-").lower()
+    digest = hashlib.sha1(page_key.encode("utf-8")).hexdigest()[:10]
+
+    if page_key.startswith("people/"):
+        prefix = "person"
+    elif safe_leaf:
+        prefix = safe_leaf[:40]
+    else:
+        prefix = "page"
+
+    return f"{prefix}-{digest}.html"
+
+
+def build_file_map(pages: Iterable[str]) -> Dict[str, str]:
+    return {page: filename_for_page(page) for page in pages}
 
 
 def image_ext(content_type: str, fallback_url: str) -> str:
@@ -81,9 +135,10 @@ def image_ext(content_type: str, fallback_url: str) -> str:
         return ".gif"
     if "svg" in content_type:
         return ".svg"
+    if "icon" in content_type:
+        return ".ico"
 
-    path = fallback_url.split("?", 1)[0]
-    path = path.split("#", 1)[0]
+    path = fallback_url.split("?", 1)[0].split("#", 1)[0]
     if "." in path.rsplit("/", 1)[-1]:
         ext = "." + path.rsplit(".", 1)[-1].lower()
         if len(ext) <= 6:
@@ -114,7 +169,6 @@ def decode_candidate_url(token: str) -> str:
 
 
 def extract_image_candidates(page_html: str) -> List[Tuple[str, str]]:
-    # Capture both regular and JS-escaped URLs.
     patterns = [
         r"https?://[^\s\"'<>\\)]+",
         r"https:\\\\/\\\\/[^\s\"'<>\\)]+",
@@ -131,19 +185,17 @@ def extract_image_candidates(page_html: str) -> List[Tuple[str, str]]:
     return sorted(seen)
 
 
-def download_image(url_in_html: str, cache: Dict[str, str]) -> Tuple[str, str]:
-    decoded_url = html.unescape(url_in_html)
-    if decoded_url in cache:
-        return decoded_url, cache[decoded_url]
+def download_image(url: str, cache: Dict[str, str]) -> Tuple[str, str]:
+    if url in cache:
+        return url, cache[url]
 
-    resp = SESSION.get(decoded_url, timeout=45)
+    resp = SESSION.get(url, timeout=45)
     resp.raise_for_status()
     content_type = resp.headers.get("content-type", "")
     if not content_type.startswith("image/"):
-        raise RuntimeError(f"Non-image content for URL: {decoded_url} ({content_type})")
+        raise RuntimeError(f"Non-image content for URL: {url} ({content_type})")
 
-    ext = image_ext(content_type, decoded_url)
-    # Use content hash so asset paths stay stable even if source URLs rotate.
+    ext = image_ext(content_type, url)
     digest = hashlib.sha1(resp.content).hexdigest()[:20]
     file_name = f"{digest}{ext}"
     target = ASSET_DIR / file_name
@@ -151,25 +203,32 @@ def download_image(url_in_html: str, cache: Dict[str, str]) -> Tuple[str, str]:
         target.write_bytes(resp.content)
 
     local_path = f"assets/mirror/{file_name}"
-    cache[decoded_url] = local_path
-    return decoded_url, local_path
+    cache[url] = local_path
+    return url, local_path
 
 
-def replace_internal_links(page_html: str, slugs: Iterable[str]) -> str:
+def replace_internal_links(page_html: str, file_map: Dict[str, str]) -> str:
     out = page_html
-    for slug in slugs:
-        filename = slug_to_filename(slug)
-        for source in (
-            f"https://sites.google.com/view/hax-kit/{slug}",
-            f"https://sites.google.com/view/hax-kit/{slug}/",
-            f"/view/hax-kit/{slug}",
-            f"/view/hax-kit/{slug}/",
-        ):
+    for page_key in sorted(file_map.keys(), key=len, reverse=True):
+        filename = file_map[page_key]
+        encoded_key = quote(page_key, safe="/")
+        sources = [
+            f"{BASE_URL}/{encoded_key}",
+            f"{BASE_URL}/{page_key}",
+            f"/view/hax-kit/{encoded_key}",
+            f"/view/hax-kit/{page_key}",
+            f"view/hax-kit/{encoded_key}",
+            f"view/hax-kit/{page_key}",
+        ]
+        for source in sources:
             out = out.replace(source, filename)
 
-    # Keep root paths on this static site.
-    out = out.replace("https://sites.google.com/view/hax-kit", "index.html")
-    out = out.replace("/view/hax-kit", "index.html")
+    for root_source in (
+        "https://sites.google.com/view/hax-kit",
+        "/view/hax-kit",
+        "view/hax-kit",
+    ):
+        out = out.replace(root_source, "index.html")
     return out
 
 
@@ -178,50 +237,54 @@ def js_escape_url(url: str) -> str:
 
 
 def sanitize_for_static(html_text: str) -> str:
-    # Google Sites runtime scripts can trigger reload loops outside original hosting.
     return SCRIPT_TAG_RE.sub("", html_text)
 
 
-def build_static_nav(current_slug: str) -> str:
-    items = [
-        ("home", "index.html", "Home"),
-        ("news", "news.html", "News"),
-        ("people", "people.html", "People"),
-        ("projects", "projects.html", "Projects"),
-        ("research", "research.html", "Research"),
-        ("publications", "publications.html", "Publications"),
-        ("awards", "awards.html", "Awards"),
-        ("gallery", "gallery.html", "Gallery"),
-        ("courses", "courses.html", "Courses"),
-    ]
+def nav_is_active(item_key: str, current_key: str) -> bool:
+    if current_key == item_key:
+        return True
+    if item_key != "home" and current_key.startswith(item_key + "/"):
+        return True
+    return False
+
+
+def build_static_nav(current_key: str) -> str:
     links: List[str] = []
-    for slug, href, label in items:
-        cls = "active" if slug == current_slug else ""
+    for item_key, href, label in CORE_NAV:
+        cls = "active" if nav_is_active(item_key, current_key) else ""
         links.append(f'<a class="{cls}" href="{href}">{label}</a>')
-    links_html = "".join(links)
+
     return (
         "<!-- HAX_STATIC_NAV_START -->"
         '<nav class="hax-static-nav" aria-label="Primary">'
         '<div class="hax-static-nav__inner">'
-        '<span class="hax-static-nav__brand">HAX Lab</span>'
-        f"{links_html}"
+        '<a class="hax-static-nav__brand" href="index.html">HAX Lab</a>'
+        f"{''.join(links)}"
         "</div>"
         "</nav>"
         "<!-- HAX_STATIC_NAV_END -->"
     )
 
 
-def inject_static_nav(html_text: str, slug: str) -> str:
+def inject_static_nav(html_text: str, page_key: str) -> str:
     nav_style = (
         "/* HAX_STATIC_NAV_STYLE_START */\n"
         "<style>\n"
-        ".hax-static-nav{position:sticky;top:0;z-index:99999;background:#0f3f70;border-bottom:1px solid #0a2b4f;}\n"
-        ".hax-static-nav__inner{max-width:1200px;margin:0 auto;padding:10px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}\n"
-        ".hax-static-nav__brand{color:#fff;font:700 14px/1 Arial,sans-serif;margin-right:4px;}\n"
-        ".hax-static-nav a{color:#eaf1ff;text-decoration:none;font:600 13px/1 Arial,sans-serif;padding:6px 8px;border-radius:6px;}\n"
-        ".hax-static-nav a:hover{background:#1e568f;}\n"
-        ".hax-static-nav a.active{background:#fff;color:#0f3f70;}\n"
-        "@media (max-width:640px){.hax-static-nav__inner{padding:8px 10px}.hax-static-nav a{font-size:12px;padding:5px 7px}}\n"
+        "#atIdViewHeader,.dZA9kd,.LqzjUe{display:none!important;}\n"
+        "body{padding-top:90px!important;}\n"
+        ".hax-static-nav{position:fixed;top:0;left:0;right:0;z-index:2147483647;padding:12px 14px;"
+        "background:linear-gradient(180deg,rgba(6,21,39,.88) 0%,rgba(6,21,39,.48) 100%);backdrop-filter:blur(8px);}\n"
+        ".hax-static-nav__inner{max-width:1240px;margin:0 auto;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"
+        "border:1px solid rgba(255,255,255,.2);border-radius:14px;"
+        "background:linear-gradient(96deg,#0f2f52 0%,#0f3f6b 47%,#175f8f 100%);"
+        "box-shadow:0 10px 28px rgba(4,14,26,.35);}\n"
+        ".hax-static-nav__brand{color:#fff;text-decoration:none;font:800 15px/1.1 'Open Sans',Arial,sans-serif;"
+        "letter-spacing:.2px;margin-right:6px;padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.14);}\n"
+        ".hax-static-nav a{color:#e8f2ff;text-decoration:none;font:700 13px/1 'Open Sans',Arial,sans-serif;"
+        "padding:9px 11px;border-radius:10px;transition:.18s transform,.18s background,.18s color;}\n"
+        ".hax-static-nav a:hover{background:rgba(255,255,255,.2);color:#fff;transform:translateY(-1px);}\n"
+        ".hax-static-nav a.active{background:#fff;color:#0d365c;box-shadow:0 2px 10px rgba(255,255,255,.25);}\n"
+        "@media (max-width:760px){body{padding-top:112px!important}.hax-static-nav{padding:10px 10px}.hax-static-nav__inner{padding:10px 11px}.hax-static-nav a{font-size:12px;padding:8px 9px}}\n"
         "</style>\n"
         "/* HAX_STATIC_NAV_STYLE_END */"
     )
@@ -229,7 +292,7 @@ def inject_static_nav(html_text: str, slug: str) -> str:
     cleaned = NAV_BLOCK_RE.sub("", html_text)
     cleaned = NAV_STYLE_RE.sub("", cleaned)
 
-    nav_html = build_static_nav(slug)
+    nav_html = build_static_nav(page_key)
     if re.search(r"<body\b[^>]*>", cleaned, flags=re.IGNORECASE):
         cleaned = re.sub(
             r"(<body\b[^>]*>)",
@@ -241,46 +304,64 @@ def inject_static_nav(html_text: str, slug: str) -> str:
     else:
         cleaned = nav_html + cleaned
 
-    if "</head>" in cleaned.lower():
+    if re.search(r"</head>", cleaned, flags=re.IGNORECASE):
         cleaned = re.sub(r"</head>", nav_style + "</head>", cleaned, count=1, flags=re.IGNORECASE)
     else:
         cleaned = nav_style + cleaned
+
     return cleaned
 
 
 def mirror_site() -> None:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
-    slugs = discover_slugs(SEED_SLUGS)
+
+    pages = discover_pages(SEED_PAGES)
+    file_map = build_file_map(pages)
     image_cache: Dict[str, str] = {}
 
-    for slug in slugs:
-        raw_html = download_page(slug)
-        page_html = replace_internal_links(raw_html, slugs)
+    generated_html_names: Set[str] = set()
 
-        for image_url_in_html, decoded_url in extract_image_candidates(page_html):
+    for page_key in pages:
+        raw_html = download_page(page_key)
+        page_html = replace_internal_links(raw_html, file_map)
+
+        for token, decoded in extract_image_candidates(page_html):
             try:
-                decoded, local = download_image(decoded_url, image_cache)
+                original, local = download_image(decoded, image_cache)
             except Exception:
-                # If any asset fails, keep original URL so page still renders.
                 continue
-            page_html = page_html.replace(image_url_in_html, local)
-            page_html = page_html.replace(decoded, local)
-            page_html = page_html.replace(js_escape_url(decoded), js_escape_url(local))
+            page_html = page_html.replace(token, local)
+            page_html = page_html.replace(original, local)
+            page_html = page_html.replace(js_escape_url(original), js_escape_url(local))
 
         page_html = sanitize_for_static(page_html)
-        page_html = inject_static_nav(page_html, slug)
+        page_html = inject_static_nav(page_html, page_key)
 
-        out_file = ROOT / slug_to_filename(slug)
+        file_name = file_map[page_key]
+        out_file = ROOT / file_name
         out_file.write_text(page_html, encoding="utf-8")
-        if slug == "home":
-            # Keep home.html for compatibility with mirrored links.
+        generated_html_names.add(file_name)
+
+        if page_key == "home":
             (ROOT / "home.html").write_text(page_html, encoding="utf-8")
+            generated_html_names.add("home.html")
+
+    # Remove obsolete generated personal/detail pages.
+    for html_file in ROOT.glob("*.html"):
+        name = html_file.name
+        if name in generated_html_names:
+            continue
+        if name == "contact.html":
+            html_file.unlink()
+            continue
+        if re.match(r"^(?:person|page)-[a-f0-9]{10}\.html$", name):
+            html_file.unlink()
 
     # Keep only assets referenced by generated HTML pages.
-    html_files = [ROOT / slug_to_filename(s) for s in slugs] + [ROOT / "home.html"]
     used_assets: Set[str] = set()
     local_asset_pattern = re.compile(r"assets/mirror/[A-Za-z0-9._-]+")
-    for html_file in html_files:
+    for name in generated_html_names:
+        html_file = ROOT / name
         if not html_file.exists():
             continue
         text = html_file.read_text(encoding="utf-8", errors="ignore")
@@ -291,12 +372,10 @@ def mirror_site() -> None:
         if rel not in used_assets and asset.is_file():
             asset.unlink()
 
-    # Remove pages that are not part of the source site.
-    stale_files = [ROOT / "contact.html"]
-    for stale in stale_files:
-        if stale.exists():
-            stale.unlink()
+
+def main() -> None:
+    mirror_site()
 
 
 if __name__ == "__main__":
-    mirror_site()
+    main()
