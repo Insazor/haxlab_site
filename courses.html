@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
-<html lang="ko">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HAX Lab | Courses</title>
-  <meta name="description" content="HAX Lab redesigned responsive website with preserved legacy content and assets.">
+  <meta name="description" content="Teaching directions connected to HAX Lab.">
   <link rel="icon" href="assets/mirror/5fdb5fe05108fd6e5386.ico">
   <link rel="stylesheet" href="assets/css/site.css">
 </head>
@@ -12,47 +12,11 @@
   <header class="site-header">
     <div class="site-nav-wrap">
       <a class="brand" href="index.html">HAX Lab</a>
-      <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation">Menu</button>
+      <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
       <nav id="site-menu" class="site-menu" aria-label="Primary"></nav>
     </div>
   </header>
-
-  <main class="site-shell">
-    <section class="hero">
-      <p class="eyebrow">Courses</p>
-      <h1>Education and Teaching</h1>
-      <p>연구 연계 교과와 학습 활동을 확장 가능한 페이지 구조로 설계했습니다.</p>
-    </section>
-
-    <div class="panel-grid">
-      <section class="panel" aria-labelledby="legacy-title">
-        <h2 id="legacy-title">Legacy Highlights</h2>
-        <p id="snapshot-meta" class="meta">Loading archived context...</p>
-        <ol id="legacy-highlights" class="list"></ol>
-        <p style="margin:14px 0 0;">
-          <a id="archive-link" class="button" href="archive/legacy-html/index.html">Open Full Legacy Page</a>
-        </p>
-      </section>
-
-      <section class="panel" aria-labelledby="image-title">
-        <h2 id="image-title">Legacy Visual Assets</h2>
-        <p class="meta">기존 사이트 이미지는 그대로 보존되어 새 구조에서 재활용됩니다.</p>
-        <div id="legacy-images" class="image-grid"></div>
-      </section>
-    </div>
-
-    <section aria-labelledby="topic-title" style="margin-top:22px;">
-      <h2 id="topic-title" style="margin:0 0 10px;font-family:'Space Grotesk',sans-serif;">Page Focus</h2>
-      <div id="topic-grid" class="topic-grid"></div>
-    </section>
-
-
-
-    <footer class="site-footer">
-      <p>© <span id="year"></span> HAX Lab. Preserved legacy content is available in <code>archive/legacy-html</code> and <code>content/legacy</code>.</p>
-    </footer>
-  </main>
-
-  <script src="assets/js/site.js"></script>
+  <main class="site-shell"></main>
+  <script src="assets/js/site.js" defer></script>
 </body>
 </html>
