@@ -1,28 +1,28 @@
-﻿# HaxLab Site Mirror
+﻿# HAX Lab Site
 
-이 저장소는 아래 Google Sites를 정적 HTML로 미러링한 버전입니다.
+정적 반응형 홈페이지(리뉴얼 버전)입니다.  
+기존 Google Sites 콘텐츠는 별도 아카이브/스냅샷으로 분리 보관합니다.
 
-- Source: https://sites.google.com/view/hax-kit/home
+## Live Pages
 
-## Included Pages
+- `index.html`, `home.html`
+- `news.html`
+- `people.html`
+- `projects.html`
+- `research.html`
+- `publications.html`
+- `awards.html`
+- `gallery.html`
+- `courses.html`
 
-- index.html (home)
-- news.html
-- people.html
-- projects.html
-- research.html
-- publications.html
-- awards.html
-- gallery.html
-- courses.html
-- home.html (호환 링크용)
+## Legacy Preservation
 
-## Assets
+- 기존 HTML 백업: `archive/legacy-html/`
+- 주요 텍스트/이미지 스냅샷: `content/legacy/content_snapshot.json`
+- 이미지 자산: `assets/mirror/`
 
-- 페이지 내 이미지 리소스는 `assets/mirror/`에 저장됩니다.
+## Scripts
 
-## Refresh Mirror
-
-```bash
-python scripts/mirror_haxkit.py
-```
+- 미러 갱신: `python scripts/mirror_haxkit.py`
+- 보존 스냅샷 생성(최초): `python scripts/preserve_legacy_content.py`
+- 보존 데이터 강제 갱신: `python scripts/preserve_legacy_content.py --force`
