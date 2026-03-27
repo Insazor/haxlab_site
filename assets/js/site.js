@@ -1,12 +1,15 @@
 import { animate, stagger } from "../vendor/animejs/anime.esm.js";
 
-const NAV_ITEMS = [
-  ["home", "index.html", "Home"],
-  ["news", "news.html", "News"],
-  ["people", "people.html", "People"],
-  ["projects", "projects.html", "Projects"],
+const PRIMARY_NAV_ITEMS = [
   ["research", "research.html", "Research"],
+  ["projects", "projects.html", "Projects"],
   ["publications", "publications.html", "Publications"],
+  ["people", "people.html", "People"],
+  ["contact", "index.html#contact", "Contact"],
+];
+
+const SECONDARY_NAV_ITEMS = [
+  ["news", "news.html", "News"],
   ["awards", "awards.html", "Awards"],
   ["gallery", "gallery.html", "Gallery"],
   ["courses", "courses.html", "Courses"],
@@ -423,12 +426,24 @@ function setupMenu(activeKey) {
   const nav = document.getElementById("site-menu");
   const toggle = document.getElementById("menu-toggle");
   if (!nav) return;
-  nav.className = "hidden w-full flex-col gap-2 pt-3 lg:flex lg:w-auto lg:flex-row lg:items-center lg:gap-1 lg:pt-0";
-  nav.innerHTML = NAV_ITEMS.map(([key, href, label]) => {
+  nav.className = "hidden w-full flex-col gap-2 pt-3 lg:flex lg:w-auto lg:flex-row lg:items-center lg:gap-2 lg:pt-0";
+  const primaryMarkup = PRIMARY_NAV_ITEMS.map(([key, href, label]) => {
     const active = key === activeKey;
     const className = active ? "nav-link nav-link-active" : "nav-link";
     return `<a class="${className}" href="${href}"${active ? ' aria-current="page"' : ""}>${esc(label)}</a>`;
   }).join("");
+  const secondaryMarkup = SECONDARY_NAV_ITEMS.map(([key, href, label]) => {
+    const active = key === activeKey;
+    return `<a class="utility-link${active ? " utility-link-active" : ""}" href="${href}"${active ? ' aria-current="page"' : ""}>${esc(label)}</a>`;
+  }).join("");
+  const utilityOpen = SECONDARY_NAV_ITEMS.some(([key]) => key === activeKey) ? " open" : "";
+  nav.innerHTML = `
+    <div class="nav-primary-row">${primaryMarkup}</div>
+    <details class="nav-utility"${utilityOpen}>
+      <summary class="utility-summary">More</summary>
+      <div class="utility-menu">${secondaryMarkup}</div>
+    </details>
+  `;
   if (toggle) {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const closeMenu = (instant = false) => {
@@ -507,6 +522,7 @@ function hero(title, summary, tags, panel, art, options = {}) {
   const accentSoft = hexToRgba(accent, 0.24);
   const accentStrong = hexToRgba(accent, 0.36);
   const pageLabel = options.eyebrow || "HAX Lab";
+  const actions = renderActionLinks(options.actions, "dark");
   const artHtml = art ? `
     <figure class="js-hero-panel js-hero-layer overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.08]" data-hero-depth="18">
       <img class="aspect-[4/3] w-full object-cover" src="${esc(art.image)}" alt="${esc(art.title || title)}" loading="lazy">
@@ -530,14 +546,15 @@ function hero(title, summary, tags, panel, art, options = {}) {
           <div class="js-hero-line flex flex-wrap gap-2">
             ${tags.map((tag) => `<span class="js-hero-chip rounded-full border border-white/15 bg-white/[0.08] px-3 py-1 text-sm font-medium text-white/90">${esc(tag)}</span>`).join("")}
           </div>
+          ${actions}
         </div>
         <div class="relative z-10 space-y-4 js-hero-layer" data-hero-depth="20">
-          <aside class="js-hero-panel js-hero-layer rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 backdrop-blur" data-hero-depth="24">
+          <aside class="js-hero-panel js-hero-layer hero-panel-compact rounded-[2rem] border border-white/12 bg-white/[0.08] p-5 backdrop-blur" data-hero-depth="24">
             <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/50">${esc(panel.title)}</p>
-            <p class="mt-3 text-sm leading-7 text-white/70">${esc(panel.text)}</p>
-            <div class="mt-5 space-y-4">
+            ${panel.text ? `<p class="mt-3 text-sm leading-7 text-white/68">${esc(panel.text)}</p>` : ""}
+            <div class="mt-4 space-y-3">
               ${panel.items.map((item) => `
-                <div class="border-t border-white/10 pt-4 first:border-t-0 first:pt-0">
+                <div class="hero-panel-row">
                   <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/45">${esc(item[0])}</div>
                   <div class="mt-2 text-sm font-medium text-white">${esc(item[1])}</div>
                 </div>
@@ -639,17 +656,155 @@ function sectionWrap(title, intro, inner, options = "") {
   const config = typeof options === "string" ? { className: options } : (options || {});
   const cls = config.className ? `section-block ${config.className}` : "section-block";
   const eyebrow = config.eyebrow || "Section";
+  const id = config.id ? ` id="${esc(config.id)}"` : "";
+  const actions = config.actions ? `<div class="section-actions">${config.actions}</div>` : "";
   return `
-    <section class="${cls}" data-reveal>
+    <section${id} class="${cls}" data-reveal>
       <div class="section-heading">
         <div class="space-y-3">
           <span class="eyebrow">${esc(eyebrow)}</span>
           <h2 class="font-serif text-3xl text-ink-950 sm:text-4xl">${esc(title)}</h2>
         </div>
-        <p class="max-w-3xl text-sm leading-7 text-ink-500 sm:text-base">${esc(intro)}</p>
+        <div class="section-heading__aside">
+          <p class="max-w-3xl text-sm leading-7 text-ink-500 sm:text-base">${esc(intro)}</p>
+          ${actions}
+        </div>
       </div>
       ${inner}
     </section>
+  `;
+}
+
+function renderActionLinks(items, tone = "light") {
+  if (!items || !items.length) return "";
+  return `<div class="hero-actions">${items.map((item) => {
+    const variant = item.variant === "secondary" ? "button-secondary" : (tone === "dark" ? "button-primary button-primary-dark" : "button-primary");
+    return `<a class="${variant}" href="${esc(item.href)}">${esc(item.label)}</a>`;
+  }).join("")}</div>`;
+}
+
+function renderAnchorNav(items) {
+  return `
+    <nav class="anchor-nav" aria-label="Homepage sections" data-reveal>
+      ${items.map((item) => `<a class="anchor-link" href="${esc(item.href)}">${esc(item.label)}</a>`).join("")}
+    </nav>
+  `;
+}
+
+function renderCompactSignals(items, options = {}) {
+  const list = items.slice(0, options.limit || 4);
+  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View all signals")}</a></div>` : "";
+  return `
+    <div class="signal-list">
+      ${list.map((item) => `
+        <article class="signal-item" data-reveal-item>
+          <div class="signal-date">${esc(item[0])}</div>
+          <div class="space-y-2">
+            <h3 class="signal-title">${esc(item[1])}</h3>
+            <p class="signal-copy">${esc(item[2])}</p>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+    ${footer}
+  `;
+}
+
+function flattenPublications(groups) {
+  return groups.flatMap((group) => group.items.map((item) => ({
+    group: group.title,
+    venue: item[0],
+    title: item[1],
+    authors: item[2],
+  })));
+}
+
+function renderPublicationPreview(groups, options = {}) {
+  const items = flattenPublications(groups).slice(0, options.limit || 4);
+  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View all publications")}</a></div>` : "";
+  return `
+    <div class="output-preview-grid">
+      ${items.map((item) => `
+        <article class="output-card" data-reveal-item>
+          <div class="output-meta">
+            <span>${esc(item.group)}</span>
+            <span>${esc(item.venue)}</span>
+          </div>
+          <h3 class="output-title">${esc(item.title)}</h3>
+          <p class="output-authors">${esc(item.authors)}</p>
+        </article>
+      `).join("")}
+    </div>
+    ${footer}
+  `;
+}
+
+function renderGalleryPreview(items, options = {}) {
+  const list = items.slice(0, options.limit || 3);
+  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View gallery")}</a></div>` : "";
+  return `
+    <div class="gallery-preview-grid">
+      ${list.map((item) => `
+        <figure class="gallery-preview-card" data-parallax="-14" data-reveal-item>
+          <img class="aspect-[16/11] w-full object-cover" src="${esc(item[0])}" alt="${esc(item[1])}" loading="lazy">
+          <figcaption class="gallery-caption">${esc(item[1])}</figcaption>
+        </figure>
+      `).join("")}
+    </div>
+    ${footer}
+  `;
+}
+
+function renderFeaturedProgram(feature) {
+  return `
+    <div class="featured-program-grid">
+      <article class="feature-lead" data-reveal-item>
+        <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(feature.label)}</span>
+        <h3 class="mt-3 font-serif text-3xl text-ink-950 sm:text-[2.2rem]">${esc(feature.title)}</h3>
+        <p class="mt-4 text-sm leading-7 text-ink-500 sm:text-base">${esc(feature.text)}</p>
+        <div class="feature-highlight-list">
+          ${feature.points.map((item) => `
+            <div class="feature-highlight-item">
+              <div class="feature-highlight-key">${esc(item[0])}</div>
+              <p class="feature-highlight-copy">${esc(item[1])}</p>
+            </div>
+          `).join("")}
+        </div>
+        <div class="hero-actions">
+          <a class="button-primary" href="projects.html">View Projects</a>
+          <a class="button-secondary" href="research.html">Research Overview</a>
+        </div>
+      </article>
+      <figure class="feature-visual" data-parallax="-22" data-reveal-item>
+        <img class="aspect-[5/4] w-full object-cover" src="${esc(feature.image)}" alt="${esc(feature.title)}" loading="lazy">
+        <figcaption class="feature-visual-caption">
+          <span class="feature-visual-kicker">Current flagship direction</span>
+          <span class="feature-visual-copy">Assistive XR, spatial reconstruction, and digital twin-guided mobility support.</span>
+        </figcaption>
+      </figure>
+    </div>
+  `;
+}
+
+function renderFooter() {
+  return `
+    <footer id="contact" class="footer-card">
+      <div class="footer-grid">
+        <div class="space-y-3">
+          <span class="eyebrow">Contact</span>
+          <h2 class="font-serif text-2xl text-ink-950">HAX Lab</h2>
+          <p class="text-sm leading-7 text-ink-500">Human-centered XR systems research at Kumoh National Institute of Technology.</p>
+        </div>
+        <div class="footer-contact-list">
+          <a class="footer-link" href="mailto:kim01@kumoh.ac.kr">kim01@kumoh.ac.kr</a>
+          <p>Digital Building B111</p>
+          <p>Kumoh National Institute of Technology</p>
+        </div>
+        <nav class="footer-nav" aria-label="Secondary">
+          ${SECONDARY_NAV_ITEMS.map((item) => `<a class="footer-link" href="${esc(item[1])}">${esc(item[2])}</a>`).join("")}
+        </nav>
+      </div>
+    </footer>
   `;
 }
 
@@ -666,14 +821,18 @@ function renderPillRow(items) {
   return `<div class="chip-row">${items.map((item) => `<span class="chip">${esc(item)}</span>`).join("")}</div>`;
 }
 
-function renderCards(items) {
+function renderCards(items, options = {}) {
+  const maxPills = options.maxPills || 0;
+  const textClass = options.textClass || "";
+  const titleClass = options.titleClass || "";
+  const cardClass = options.cardClass || "";
   return `<div class="info-grid">${items.map((item) => `
-    <article class="feature-card" data-reveal-item>
+    <article class="${["feature-card", cardClass].filter(Boolean).join(" ")}" data-reveal-item>
       ${item.image ? `<img class="mb-5 aspect-[16/10] w-full rounded-[1.25rem] object-cover" src="${esc(item.image)}" alt="${esc(item.title)}" loading="lazy">` : ""}
       <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(item.meta)}</span>
-      <h3 class="mt-3 font-serif text-2xl text-ink-950">${esc(item.title)}</h3>
-      <p class="mt-3 text-sm leading-7 text-ink-500">${esc(item.text)}</p>
-      ${renderPillRow(item.pills)}
+      <h3 class="${["mt-3 font-serif text-2xl text-ink-950", titleClass].filter(Boolean).join(" ")}">${esc(item.title)}</h3>
+      <p class="${["mt-3 text-sm leading-7 text-ink-500", textClass].filter(Boolean).join(" ")}">${esc(item.text)}</p>
+      ${renderPillRow(maxPills ? (item.pills || []).slice(0, maxPills) : item.pills)}
     </article>`).join("")}</div>`;
 }
 
@@ -817,17 +976,31 @@ function renderPage(pageKey) {
   let html = "";
 
   if (pageKey === "home") {
-    html += hero("Designing XR interaction that feels clear, embodied, and collaborative.", "HAX Lab studies immersive systems through usable interaction, multimodal coordination, collaborative workflows, accessible computing, and digital twin-linked applications.", ["XR", "HCI", "Collaboration", "Accessible Computing"], {
-      title: "Lab Snapshot",
-      text: "The lab stays close to real settings, from assistive mobility and forensics to industrial simulation and spatial computing systems.",
+    html += hero("Designing XR interaction that feels clear, embodied, and collaborative.", "HAX Lab studies immersive systems through usable interaction, multimodal coordination, collaborative workflows, accessible computing, and digital twin-linked applications.", ["XR systems", "HCI", "Collaborative environments"], {
+      title: "Quick Info",
+      text: "",
       items: [["Location", "Digital Building B111, KNUT"], ["Contact", "kim01@kumoh.ac.kr"], ["Current signal", "NRF Young Investigator Research Program"]],
-    }, { kicker: "Current project", title: "Assistive XR and digital twin-linked systems", image: "assets/mirror/b39f33c30b09c769ac47.png" }, { themeKey: "home", eyebrow: "HAX Lab" });
-    html += sectionWrap("Lab Snapshot", "A compact orientation to the lab's base and current mode.", renderStats(LAB_METRICS), { className: "section--tight", eyebrow: "Overview" });
-    html += sectionWrap("Research Themes", "The lab returns to a small set of recurring questions about interaction, embodiment, and coordination.", renderCards(RESEARCH_TRACKS), { eyebrow: "Research" });
-    html += sectionWrap("Featured Program", "A flagship direction that captures the lab's human-centered applied research style.", renderFeatureSplit(FEATURED_PROJECT), { eyebrow: "Current Program" });
-    html += sectionWrap("Recent Signals", "Recent public milestones across grants, conferences, and publication activity.", renderTimeline(NEWS_ITEMS.slice(0, 6)), { eyebrow: "Updates" });
-    html += sectionWrap("Selected Outputs", "Recent publication activity across conference and journal venues.", renderPublications(PUBLICATION_GROUPS), { eyebrow: "Publications" });
-    html += sectionWrap("Around the Lab", "A visual slice of demos, conferences, and lab life.", renderGallery(GALLERY.slice(0, 4)), { eyebrow: "Culture" });
+    }, "", {
+      themeKey: "home",
+      eyebrow: "HAX Lab",
+      actions: [
+        { href: "#research-themes", label: "Explore Research" },
+        { href: "publications.html", label: "View Publications", variant: "secondary" },
+        { href: "people.html", label: "Meet the Lab", variant: "secondary" },
+      ],
+    });
+    html += renderAnchorNav([
+      { href: "#research-themes", label: "Research Themes" },
+      { href: "#featured-program", label: "Featured Program" },
+      { href: "#selected-outputs", label: "Selected Outputs" },
+      { href: "#recent-signals", label: "Recent Signals" },
+      { href: "#around-the-lab", label: "Around the Lab" },
+    ]);
+    html += sectionWrap("Research Themes", "A compact view of the recurring questions shaping the lab's current work.", renderCards(RESEARCH_TRACKS, { maxPills: 2, textClass: "line-clamp-2", titleClass: "text-[1.7rem]", cardClass: "feature-card--compact" }), { id: "research-themes", className: "section--feature section--tight-top", eyebrow: "Research" });
+    html += sectionWrap("Featured Program", "A flagship direction that captures the lab's human-centered applied research style.", renderFeaturedProgram(FEATURED_PROJECT), { id: "featured-program", className: "section--feature", eyebrow: "Current Program" });
+    html += sectionWrap("Selected Outputs", "A short publication preview that reflects the lab's recent conference and journal rhythm.", renderPublicationPreview(PUBLICATION_GROUPS, { limit: 4, href: "publications.html", label: "View all publications" }), { id: "selected-outputs", className: "section--compact", eyebrow: "Publications" });
+    html += sectionWrap("Recent Signals", "A quick look at current milestones across grants, conferences, and project activity.", renderCompactSignals(NEWS_ITEMS, { limit: 4, href: "news.html", label: "View all signals" }), { id: "recent-signals", className: "section--compact", eyebrow: "Updates" });
+    html += sectionWrap("Around the Lab", "A restrained visual preview of demos, conferences, and everyday lab culture.", renderGalleryPreview(GALLERY, { limit: 3, href: "gallery.html", label: "View gallery" }), { id: "around-the-lab", className: "section--compact", eyebrow: "Culture" });
   } else if (pageKey === "news") {
     html += hero("Research updates, conference activity, and project milestones.", "The lab's public signal is shaped by conferences, publication outcomes, funded programs, and the steady addition of working systems.", ["Updates", "Conferences", "Projects"], {
       title: "Recent pattern",
@@ -900,7 +1073,7 @@ function renderPage(pageKey) {
     }, undefined, { themeKey: pageKey, eyebrow: "HAX Lab" });
   }
 
-  html += `<footer class="footer-card">&copy; ${new Date().getFullYear()} HAX Lab | Digital Building B111, Kumoh National Institute of Technology | kim01@kumoh.ac.kr</footer>`;
+  html += renderFooter();
   main.innerHTML = html;
 }
 
