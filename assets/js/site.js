@@ -261,6 +261,48 @@ const PROFILE_DATA = {
       ["Professional roles", "Conference organization, editorial service, and research project leadership."],
       ["Current direction", "Building immersive systems that hold up in evaluation as well as demonstration."],
     ],
+    recordSections: [
+      {
+        title: "Academic Direction",
+        items: [
+          ["Affiliation", "Department of Computer Software Engineering, Kumoh National Institute of Technology."],
+          ["Research", "XR, VR, AR, MR, HCI, and metaverse systems grounded in usable interaction."],
+          ["Current frame", "Building immersive systems that hold up in evaluation as well as demonstration."],
+        ],
+      },
+      {
+        title: "Academic Service",
+        items: [
+          ["2026", "IEEE VR 2026 Finance Chair."],
+          ["2026", "IEEE APMAR 2026 Local Organization Chair."],
+          ["2025", "IEEE ISMAR 2025 Doctoral Consortium Chair."],
+        ],
+      },
+      {
+        title: "Editorial and Review",
+        items: [
+          ["Associate Editor", "Journal of Information and Communication Convergence Engineering (JICCE)."],
+          ["Associate Editor", "Journal of Digital Contents Society."],
+          ["Reviewer", "IEEE TVCG, IEEE VR, ACM CHI, ACM ISS, ACM VRST, IEEE APMAR, Smart Media Journal, and Journal of the Korea Computer Graphics Society."],
+        ],
+      },
+      {
+        title: "Talks and Invited Visits",
+        items: [
+          ["2024.11", "National Forensic Service."],
+          ["2023", "Wonkwang University, Chonnam National University, and Mokpo National University."],
+          ["2022", "Korean Institute of Information Scientists and Engineers and Wonkwang University."],
+        ],
+      },
+      {
+        title: "Awards and Honors",
+        items: [
+          ["2025", "Outstanding Teaching Professor 2025-2."],
+          ["2024", "Outstanding Teaching Professor 2024-2."],
+          ["2022", "Outstanding Employee Award, KETI."],
+        ],
+      },
+    ],
     skills: ["XR systems", "Human-centered design", "Research leadership", "Conference organization"],
   },
   "profile-jemin": {
@@ -280,6 +322,31 @@ const PROFILE_DATA = {
       ["Research interests", "Virtual reality, games, and convergence content systems."],
       ["Technical base", "Java, C#, C++, and Python."],
       ["Working style", "Strong focus on turning prototypes into testable interaction systems."],
+    ],
+    recordSections: [
+      {
+        title: "Role and Focus",
+        items: [
+          ["Position", "M.S. Student at HAX Lab, Kumoh National Institute of Technology."],
+          ["Research", "Virtual reality, games, and convergence content systems."],
+          ["Working style", "Turns interaction ideas into testable immersive systems with strong implementation detail."],
+        ],
+      },
+      {
+        title: "Awards and Honors",
+        items: [
+          ["2024.12", "AI Capstone Design Competition Outstanding Prize."],
+          ["2024.11", "Korean Digital Contents Society Undergraduate Paper Competition."],
+        ],
+      },
+      {
+        title: "Skills",
+        items: [
+          ["Languages", "Korean (native), English."],
+          ["Programming", "Java, C#, C++, and Python."],
+          ["Technical mode", "VR prototyping, game-oriented implementation, and interaction system development."],
+        ],
+      },
     ],
     skills: ["Java", "C#", "C++", "Python", "VR prototyping"],
   },
@@ -301,6 +368,31 @@ const PROFILE_DATA = {
       ["Publication pattern", "Conference and journal work anchored in concrete interface behavior."],
       ["Lab role", "Graduate research core across collaboration-focused XR topics."],
     ],
+    recordSections: [
+      {
+        title: "Role and Focus",
+        items: [
+          ["Position", "M.S. Student at HAX Lab, Kumoh National Institute of Technology."],
+          ["Research", "Collaboration, multimodal interaction, and accessible immersive systems."],
+          ["Current direction", "Studies how people coordinate, refer, and communicate clearly in shared XR environments."],
+        ],
+      },
+      {
+        title: "Research Practice",
+        items: [
+          ["Core topic", "Object reference clarity and multimodal coordination in collaborative XR."],
+          ["System work", "Prototype construction, evaluation design, and paper-facing iteration."],
+          ["Lab role", "Graduate research core across collaboration-focused XR topics."],
+        ],
+      },
+      {
+        title: "Skills",
+        items: [
+          ["Languages", "Korean (native), English."],
+          ["Technical base", "Multimodal XR, study design, system prototyping, and academic writing."],
+        ],
+      },
+    ],
     skills: ["Multimodal XR", "Study design", "System prototyping", "Academic writing"],
   },
   "profile-hyeongjun": {
@@ -320,6 +412,30 @@ const PROFILE_DATA = {
       ["Research interests", "Immersive technologies and XR content production."],
       ["Working mode", "Hands-on support for prototypes, content assembly, and testing."],
       ["Current role", "Undergraduate member contributing to ongoing immersive systems work."],
+    ],
+    recordSections: [
+      {
+        title: "Role and Focus",
+        items: [
+          ["Position", "Undergraduate Student at HAX Lab, Kumoh National Institute of Technology."],
+          ["Research", "Immersive technologies and XR content production."],
+          ["Current role", "Contributes to ongoing immersive systems work through prototype and content support."],
+        ],
+      },
+      {
+        title: "Experience",
+        items: [
+          ["Since 2024", "Participating in undergraduate research connected to current lab projects."],
+          ["Current work", "XR content prototyping, implementation support, and experiment preparation."],
+        ],
+      },
+      {
+        title: "Skills",
+        items: [
+          ["Languages", "Korean (native), English."],
+          ["Technical base", "XR content, implementation, prototype support, and testing."],
+        ],
+      },
     ],
     skills: ["XR content", "Prototype support", "Implementation", "Testing"],
   },
@@ -341,6 +457,37 @@ const PROFILE_DATA = {
       ["Technical base", "Python, Java, C++, FastAPI, Docker, Linux, MySQL, and Proxmox VE."],
       ["Lab role", "A newer member contributing to prototype and engineering-heavy tasks."],
     ],
+    recordSections: [
+      {
+        title: "Role and Focus",
+        items: [
+          ["Position", "Undergraduate Student at HAX Lab, Kumoh National Institute of Technology."],
+          ["Research", "Metaverse content, XR games, and practical systems implementation."],
+          ["Lab role", "A newer member contributing to prototype and engineering-heavy tasks."],
+        ],
+      },
+      {
+        title: "Experience",
+        items: [
+          ["2025.10", "2026 ICPC Asia Korea National First Round."],
+          ["2025.04", "HackTheon Sejong international student cybersecurity competition."],
+        ],
+      },
+      {
+        title: "Awards and Honors",
+        items: [
+          ["2025.11", "Kit Engineering Fair 2025 encouragement award."],
+        ],
+      },
+      {
+        title: "Skills",
+        items: [
+          ["Languages", "Korean (native), English."],
+          ["Programming", "Python, Java, C++, and FastAPI."],
+          ["Systems", "Docker, Linux, MySQL, and Proxmox VE."],
+        ],
+      },
+    ],
     skills: ["Python", "Java", "C++", "FastAPI", "Docker", "Linux"],
   },
   "profile-kikong": {
@@ -360,6 +507,31 @@ const PROFILE_DATA = {
       ["Focus", "XR prototyping and technical support for immersive systems."],
       ["Role in the lab", "Implementation-oriented contribution across developing ideas and working demos."],
       ["Contact", "Available by email for direct communication."],
+    ],
+    recordSections: [
+      {
+        title: "Role and Focus",
+        items: [
+          ["Position", "Academic break, still part of the broader HAX Lab network."],
+          ["Research", "XR prototype development and implementation support."],
+          ["Contribution", "Implementation-oriented work across developing ideas and working demos."],
+        ],
+      },
+      {
+        title: "Experience",
+        items: [
+          ["2024", "Joined the lab during the early build-out of the current member cohort."],
+          ["Recent", "Supported immersive implementation and iterative development work."],
+          ["Current", "Remains part of the lab story through prototype support and technical continuity."],
+        ],
+      },
+      {
+        title: "Skills",
+        items: [
+          ["Languages", "Korean (native), English."],
+          ["Technical base", "XR prototyping, implementation, iteration, and support."],
+        ],
+      },
     ],
     skills: ["XR prototyping", "Implementation", "Iteration", "Support"],
   },
@@ -847,6 +1019,32 @@ function renderTimeline(items) {
     </article>`).join("")}</div>`;
 }
 
+function filterPublicationsByAuthor(name) {
+  return PUBLICATION_GROUPS
+    .map((group) => ({
+      title: group.title,
+      items: group.items.filter((entry) => String(entry[2] || "").includes(name)),
+    }))
+    .filter((group) => group.items.length);
+}
+
+function renderRecordSections(sections) {
+  if (!sections || !sections.length) return "";
+  return `<div class="record-grid">${sections.map((section) => `
+    <article class="record-card" data-reveal-item>
+      <div class="text-xs font-semibold uppercase tracking-[0.22em] text-lab-700">${esc(section.title)}</div>
+      <div class="record-list">
+        ${section.items.map((item) => `
+          <div class="record-item">
+            <div class="record-item-label">${esc(item[0])}</div>
+            <p class="record-item-copy">${esc(item[1])}</p>
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `).join("")}</div>`;
+}
+
 function renderMembers(items) {
   return `<div class="member-grid">${items.map((item) => `
     <article class="member-card" data-reveal-item>
@@ -910,6 +1108,10 @@ function renderFeatureSplit(feature) {
 function renderProfile(key) {
   const profile = PROFILE_DATA[key];
   if (!profile) return "";
+  const profilePublications = filterPublicationsByAuthor(profile.name);
+  const recordIntro = profile.role === "Director"
+    ? "Academic service, invited activity, and the research-facing record around the lab."
+    : "A fuller view of experience, skills, outputs, and current working trajectory.";
   return hero(
     profile.name,
     profile.summary,
@@ -919,7 +1121,7 @@ function renderProfile(key) {
       text: "A compact view of the member's role, focus, and current contribution inside the lab.",
       items: [["Role", profile.role], ["Focus", profile.focus], ["Contact", profile.email || "On request"]],
     },
-    { kicker: profile.role, title: profile.name, image: profile.image },
+    "",
     { themeKey: "profile", eyebrow: "People" }
   ) + sectionWrap(
     "Overview",
@@ -951,24 +1153,16 @@ function renderProfile(key) {
     renderTimeline(profile.highlights),
     { eyebrow: "Highlights" }
   ) + sectionWrap(
-    "Background",
-    "Working interests, technical base, and current role.",
-    `
-      <div class="story-grid">
-        <article class="feature-card" data-reveal-item>
-          ${renderDetailList(profile.details)}
-          ${renderPillRow(profile.skills)}
-        </article>
-        <article class="feature-card" data-reveal-item>
-          <span class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">Current Frame</span>
-          <h3 class="mt-3 font-serif text-3xl text-ink-950">${esc(profile.role)} at HAX Lab</h3>
-          <p class="mt-4 text-sm leading-7 text-ink-500">${esc(profile.focus)}</p>
-          <p class="mt-4 text-sm leading-7 text-ink-500">${esc(profile.summary)}</p>
-        </article>
-      </div>
-    `,
-    { eyebrow: "Background" }
-  );
+    "Detailed Record",
+    recordIntro,
+    renderRecordSections(profile.recordSections || []),
+    { eyebrow: "Record" }
+  ) + (profilePublications.length ? sectionWrap(
+    "Publications",
+    "Outputs tied directly to this profile from the current lab publication list.",
+    renderPublications(profilePublications),
+    { eyebrow: "Outputs" }
+  ) : "");
 }
 
 function renderPage(pageKey) {

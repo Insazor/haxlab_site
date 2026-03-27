@@ -423,6 +423,30 @@
     @apply overflow-hidden rounded-[2rem] border border-paper-200 bg-paper-100;
   }
 
+  .record-grid {
+    @apply grid gap-5 lg:grid-cols-2;
+  }
+
+  .record-card {
+    @apply rounded-[1.75rem] border border-paper-200 bg-paper-50 p-5;
+  }
+
+  .record-list {
+    @apply mt-4 space-y-4;
+  }
+
+  .record-item {
+    @apply border-t border-paper-200 pt-4 first:border-t-0 first:pt-0;
+  }
+
+  .record-item-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-500;
+  }
+
+  .record-item-copy {
+    @apply mt-2 text-sm leading-7 text-ink-700;
+  }
+
   .gallery-grid {
     @apply grid gap-5 md:grid-cols-2 xl:grid-cols-3;
   }
@@ -570,6 +594,7 @@
   .publication-card,
   .timeline-item,
   .member-card,
+  .record-card,
   .gallery-card,
   .footer-card {
     transition:
@@ -592,6 +617,7 @@
     .publication-card:hover,
     .timeline-item:hover,
     .member-card:hover,
+    .record-card:hover,
     .gallery-card:hover {
       transform: translateY(-6px);
       box-shadow: 0 24px 60px rgba(15, 23, 32, 0.1);
