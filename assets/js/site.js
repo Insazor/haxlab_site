@@ -884,12 +884,23 @@ function renderCompactSignals(items, options = {}) {
   `;
 }
 
+function publicationTypeLabel(groupTitle) {
+  return String(groupTitle || "").toLowerCase().includes("conference") ? "Conference" : "Journal";
+}
+
+function publicationYear(value) {
+  const match = String(value || "").match(/(20\d{2})/);
+  return match ? Number(match[1]) : 0;
+}
+
 function flattenPublications(groups) {
   return groups.flatMap((group) => group.items.map((item) => ({
     group: group.title,
+    type: publicationTypeLabel(group.title),
     venue: item[0],
     title: item[1],
     authors: item[2],
+    year: publicationYear(item[0]),
   })));
 }
 
@@ -908,6 +919,95 @@ function renderPublicationPreview(groups, options = {}) {
         </article>
       `).join("")}
     </div>
+  `;
+}
+
+function renderPublicationFeature(entries, options = {}) {
+  const items = entries.slice(0, options.limit || 2);
+  return `
+    <div class="publication-feature-grid">
+      ${items.map((item) => `
+        <article class="publication-feature-card" data-reveal-item>
+          <div class="publication-entry-meta">
+            <span>${esc(item.type)}</span>
+            <span>${esc(item.venue)}</span>
+            <span>${esc(item.year)}</span>
+          </div>
+          <h3 class="publication-feature-title">${esc(item.title)}</h3>
+          <p class="publication-feature-authors">${esc(item.authors)}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPublicationArchive(entries) {
+  const byYear = new Map();
+  entries.forEach((item) => {
+    const yearKey = String(item.year || "Earlier");
+    if (!byYear.has(yearKey)) byYear.set(yearKey, []);
+    byYear.get(yearKey).push(item);
+  });
+  const years = [...byYear.keys()].sort((a, b) => Number(b) - Number(a));
+  return `
+    <div class="publication-year-stack">
+      ${years.map((year) => `
+        <section class="publication-year-block" data-reveal-item>
+          <div class="publication-year-label">${esc(year)}</div>
+          <div class="publication-entry-list">
+            ${byYear.get(year).map((item) => `
+              <article class="publication-entry-card">
+                <div class="publication-entry-meta">
+                  <span>${esc(item.type)}</span>
+                  <span>${esc(item.venue)}</span>
+                </div>
+                <h3 class="publication-entry-title">${esc(item.title)}</h3>
+                <p class="publication-entry-authors">${esc(item.authors)}</p>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      `).join("")}
+    </div>
+  `;
+}
+
+function splitMembersByRole(items) {
+  return {
+    lead: items.find((item) => item.role === "Director") || null,
+    graduate: items.filter((item) => item.role.includes("M.S.")),
+    undergraduate: items.filter((item) => item.role.includes("Undergraduate") || item.role.includes("Intern")),
+  };
+}
+
+function renderLeadMember(item) {
+  if (!item) return "";
+  return `
+    <article class="lead-member-card" data-reveal-item>
+      <div class="lead-member-grid">
+        <figure class="lead-member-photo" data-parallax="-16">
+          <img class="aspect-[4/5] w-full object-cover" src="${esc(item.image)}" alt="${esc(item.name)}" loading="lazy">
+        </figure>
+        <div class="space-y-5">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[0.24em] text-lab-700">${esc(item.role)}</div>
+            <h3 class="mt-3 font-serif text-3xl text-ink-950 sm:text-[2.4rem]">${esc(item.name)}</h3>
+            <p class="mt-4 text-sm leading-7 text-ink-500 sm:text-base">${esc(item.text)}</p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="lead-member-note">
+              <div class="record-item-label">Focus</div>
+              <p class="record-item-copy">Human-centered immersive systems, collaborative XR, and usable multimodal interaction.</p>
+            </div>
+            <div class="lead-member-note">
+              <div class="record-item-label">Role in the lab</div>
+              <p class="record-item-copy">Sets the research agenda and anchors funded programs, publication direction, and advising.</p>
+            </div>
+          </div>
+          ${item.link ? `<a class="button-primary-dark" href="${esc(item.link)}">View profile</a>` : ""}
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -1110,22 +1210,22 @@ function renderProfile(key) {
   if (!profile) return "";
   const profilePublications = filterPublicationsByAuthor(profile.name);
   const recordIntro = profile.role === "Director"
-    ? "Academic service, invited activity, and the research-facing record around the lab."
-    : "A fuller view of experience, skills, outputs, and current working trajectory.";
+    ? "Academic service, invited activity, and the broader scholarly record around the lab."
+    : "Experience, skills, and output connected to the member's current role in the lab.";
   return hero(
     profile.name,
     profile.summary,
     [profile.role, "People", "HAX Lab"],
     {
       title: "Profile Snapshot",
-      text: "A compact view of the member's role, focus, and current contribution inside the lab.",
+      text: "A concise frame for the member's current role, research focus, and contact point.",
       items: [["Role", profile.role], ["Focus", profile.focus], ["Contact", profile.email || "On request"]],
     },
     "",
     { themeKey: "profile", eyebrow: "People" }
   ) + sectionWrap(
-    "Overview",
-    "Current affiliation, focus, and working summary.",
+    "Profile Frame",
+    "Affiliation, current focus, and the member's place inside the lab.",
     `
       <div class="profile-grid">
         <figure class="profile-photo" data-parallax="-24" data-reveal-item>
@@ -1148,8 +1248,8 @@ function renderProfile(key) {
     `,
     { eyebrow: "Profile" }
   ) + sectionWrap(
-    "Selected Highlights",
-    "A concise slice of the member's current trajectory.",
+    "Current Trajectory",
+    "Recent milestones and signals that best describe the member's present arc.",
     renderTimeline(profile.highlights),
     { eyebrow: "Highlights" }
   ) + sectionWrap(
@@ -1205,14 +1305,17 @@ function renderPage(pageKey) {
     html += sectionWrap("At a Glance", "The current update flow is driven by research visibility and funded work.", renderStats([["Latest grant", "NRF Young Investigator"], ["Conference span", "VRST and ISMAR"], ["Project mode", "Applied XR plus AI"], ["Student signal", "Strong paper participation"]]), { className: "section--tight", eyebrow: "Overview" });
     html += sectionWrap("Timeline", "Recent updates in reverse chronological order.", renderTimeline(NEWS_ITEMS), { eyebrow: "Chronology" });
   } else if (pageKey === "people") {
-    html += hero("A compact team building XR systems, interaction experiments, and applied prototypes.", "HAX Lab combines faculty direction, graduate research, undergraduate making, and project-driven collaboration inside a deliberately small working group.", ["Faculty", "Graduate", "Undergraduate", "Research Intern"], {
+    const memberGroups = splitMembersByRole(CORE_MEMBERS);
+    html += hero("A focused research group spanning lab direction, graduate work, and hands-on system building.", "HAX Lab stays intentionally compact: faculty leadership, graduate research, and undergraduate implementation move in the same loop from prototype to paper to project delivery.", ["Faculty", "Graduate", "Undergraduate", "Research Intern"], {
       title: "Team snapshot",
-      text: "Current members cover research framing, system implementation, and lab execution across projects and conference output.",
-      items: [["Director", "Youngwon Kim"], ["Graduate core", "Jemin Lee and Jeonghyeon Kim"], ["Current roster", "Hyeongjun Kang, Donghee Lee, Yoongi Nam"]],
+      text: "Roles are deliberately distinct: research framing, graduate investigation, and implementation support all stay visible.",
+      items: [["Director", "Youngwon Kim"], ["Graduate researchers", "2 current M.S. members"], ["Build support", "Undergraduate and intern contributors"]],
     }, { kicker: "People", title: "Research plus build", image: "assets/mirror/962c9e7d31fd258ee777.jpg" }, { themeKey: "people", eyebrow: "People" });
-    html += sectionWrap("Team Structure", "A quick view of the lab's current size and operating shape.", renderStats(PEOPLE_STATS), { className: "section--tight", eyebrow: "Roster" });
-    html += sectionWrap("Core Members", "Faculty, graduate students, and current contributors with direct links to available profile pages.", renderMembers(CORE_MEMBERS), { eyebrow: "Members" });
-    html += sectionWrap("Supporting Roles", "Additional context around the broader member network around the lab.", renderCards(SUPPORTING_MEMBERS), { eyebrow: "Context" });
+    html += sectionWrap("Team Structure", "A quick reading of the lab's current size, composition, and working shape.", renderStats(PEOPLE_STATS), { className: "section--tight", eyebrow: "Roster" });
+    html += sectionWrap("Lab Lead", "The lab's direction is anchored by one faculty lead who connects research framing, advising, and external collaboration.", renderLeadMember(memberGroups.lead), { eyebrow: "Faculty" });
+    html += sectionWrap("Graduate Researchers", "Graduate members carry the strongest research load across collaboration, embodied interaction, and publication-facing system work.", renderMembers(memberGroups.graduate), { eyebrow: "Graduate" });
+    html += sectionWrap("Undergraduate and Research Support", "Undergraduate contributors and research support roles keep projects moving through implementation, testing, and demo preparation.", renderMembers(memberGroups.undergraduate), { eyebrow: "Build Team" });
+    html += sectionWrap("Broader Network", "The surrounding member network includes academic breaks, recent alumni, and recruiting signals around the lab's next cycle.", renderCards(SUPPORTING_MEMBERS, { maxPills: 2 }), { eyebrow: "Network" });
   } else if (pageKey === "projects") {
     html += hero("Projects stay close to actual environments instead of ending as isolated demos.", "The portfolio spans assistive XR, fire-scene reconstruction, predictive maintenance, traffic analysis, and digital twin-linked spatial computing.", ["Applied XR", "Digital twin", "Forensics", "AI systems"], {
       title: "Project pattern",
@@ -1230,13 +1333,18 @@ function renderPage(pageKey) {
     html += sectionWrap("Current Research Tracks", "The main directions that organize the lab's recent output.", renderCards(RESEARCH_TRACKS), { eyebrow: "Tracks" });
     html += sectionWrap("Working Method", "The lab's recurring way of moving from idea to evidence.", renderCards(METHODS), { eyebrow: "Method" });
   } else if (pageKey === "publications") {
-    html += hero("Publications track both core XR questions and applied immersive system output.", "Recent papers cluster around collaborative XR, immersive interaction, body estimation, accessible navigation, and multimodal coordination.", ["VRST", "ISMAR", "IEEE Access", "Sensors"], {
+    const publicationEntries = flattenPublications(PUBLICATION_GROUPS).sort((a, b) => (b.year - a.year) || a.title.localeCompare(b.title));
+    const latestYear = Math.max(...publicationEntries.map((item) => item.year));
+    const conferenceCount = publicationEntries.filter((item) => item.type === "Conference").length;
+    const journalCount = publicationEntries.filter((item) => item.type === "Journal").length;
+    html += hero("Publications show how the lab turns system building into research arguments and reusable insight.", "Recent output centers on collaborative XR, immersive interaction, embodied estimation, accessible navigation, and multimodal coordination, with conference and journal work staying tightly connected.", ["VRST", "ISMAR", "IEEE Access", "Sensors"], {
       title: "Output snapshot",
-      text: "The publication pattern shows a strong link between system building, evaluation, and practical design guidance.",
-      items: [["Conference", "ACM VRST and IEEE ISMAR"], ["Journal", "IEEE Access, Sensors, Electronics"], ["Style", "System plus evaluation plus insight"]],
+      text: "The publication record is still compact, but the pattern is clear: system implementation, evaluation, and design guidance move together.",
+      items: [["Latest year", String(latestYear)], ["Conference papers", String(conferenceCount)], ["Journal papers", String(journalCount)]],
     }, { kicker: "Output", title: "Conference and journal rhythm", image: "assets/mirror/c6fb81300faee7cddb1c.jpg" }, { themeKey: "publications", eyebrow: "Publications" });
-    html += sectionWrap("Selected Papers", "A compact publication board for the recent cycle of the lab.", renderPublications(PUBLICATION_GROUPS), { eyebrow: "Papers" });
-    html += sectionWrap("Reading the Pattern", "What the recent output says about the lab's direction.", renderCards(PUBLICATION_CARDS), { eyebrow: "Interpretation" });
+    html += sectionWrap("Featured Outputs", "A short front section for the papers that best represent the lab's current publication rhythm.", renderPublicationFeature(publicationEntries, { limit: 2 }), { eyebrow: "Featured" });
+    html += sectionWrap("Publication Archive", "The recent archive is grouped by year so the pace of conference and journal output is easier to scan.", renderPublicationArchive(publicationEntries), { eyebrow: "Archive" });
+    html += sectionWrap("Reading the Pattern", "A compact interpretation of what the current output says about the lab's research posture.", renderCards(PUBLICATION_CARDS, { maxPills: 2 }), { eyebrow: "Interpretation" });
   } else if (pageKey === "awards") {
     html += hero("Recognition reflects engineering execution, applied research, and student-led output.", "Awards in the recent cycle sit close to capstone work, contests, and public-facing project quality.", ["Capstone", "Contest", "Recognition"], {
       title: "Recognition snapshot",

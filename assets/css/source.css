@@ -415,6 +415,22 @@
     @apply rounded-[1.75rem] border border-paper-200 bg-paper-50 p-5;
   }
 
+  .lead-member-card {
+    @apply rounded-[1.75rem] border border-paper-200 bg-paper-50 p-5 sm:p-6;
+  }
+
+  .lead-member-grid {
+    @apply grid gap-5 xl:grid-cols-[minmax(16rem,0.72fr)_minmax(0,1.18fr)];
+  }
+
+  .lead-member-photo {
+    @apply overflow-hidden rounded-[1.75rem] border border-paper-200 bg-paper-100;
+  }
+
+  .lead-member-note {
+    @apply rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4;
+  }
+
   .profile-grid {
     @apply grid gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)];
   }
@@ -553,6 +569,58 @@
     overflow: hidden;
   }
 
+  .publication-feature-grid {
+    @apply grid gap-4 lg:grid-cols-2;
+  }
+
+  .publication-feature-card {
+    @apply rounded-[1.5rem] border border-paper-200 bg-paper-50 p-5;
+  }
+
+  .publication-feature-title {
+    @apply mt-3 font-serif text-2xl text-ink-950;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .publication-feature-authors {
+    @apply mt-3 text-sm leading-7 text-ink-500;
+  }
+
+  .publication-year-stack {
+    @apply grid gap-5;
+  }
+
+  .publication-year-block {
+    @apply grid gap-4 rounded-[1.75rem] border border-paper-200 bg-paper-50 p-5 xl:grid-cols-[5.5rem_minmax(0,1fr)];
+  }
+
+  .publication-year-label {
+    @apply text-2xl font-semibold text-ink-950;
+  }
+
+  .publication-entry-list {
+    @apply grid gap-3;
+  }
+
+  .publication-entry-card {
+    @apply rounded-[1.25rem] border border-paper-200 bg-white px-4 py-4;
+  }
+
+  .publication-entry-meta {
+    @apply flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-lab-700;
+  }
+
+  .publication-entry-title {
+    @apply mt-3 text-xl text-ink-950;
+  }
+
+  .publication-entry-authors {
+    @apply mt-2 text-sm leading-7 text-ink-500;
+  }
+
   .gallery-preview-grid {
     @apply grid gap-4 md:grid-cols-3;
   }
@@ -592,8 +660,11 @@
   .metric-card,
   .feature-card,
   .publication-card,
+  .publication-feature-card,
+  .publication-entry-card,
   .timeline-item,
   .member-card,
+  .lead-member-card,
   .record-card,
   .gallery-card,
   .footer-card {
@@ -615,8 +686,11 @@
     .metric-card:hover,
     .feature-card:hover,
     .publication-card:hover,
+    .publication-feature-card:hover,
+    .publication-entry-card:hover,
     .timeline-item:hover,
     .member-card:hover,
+    .lead-member-card:hover,
     .record-card:hover,
     .gallery-card:hover {
       transform: translateY(-6px);
