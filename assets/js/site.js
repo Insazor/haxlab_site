@@ -683,6 +683,10 @@ function renderActionLinks(items, tone = "light") {
   }).join("")}</div>`;
 }
 
+function renderInlineAction(label, href) {
+  return `<a class="inline-action-link" href="${esc(href)}">${esc(label)}</a>`;
+}
+
 function renderAnchorNav(items) {
   return `
     <nav class="anchor-nav" aria-label="Homepage sections" data-reveal>
@@ -693,7 +697,6 @@ function renderAnchorNav(items) {
 
 function renderCompactSignals(items, options = {}) {
   const list = items.slice(0, options.limit || 4);
-  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View all signals")}</a></div>` : "";
   return `
     <div class="signal-list">
       ${list.map((item) => `
@@ -706,7 +709,6 @@ function renderCompactSignals(items, options = {}) {
         </article>
       `).join("")}
     </div>
-    ${footer}
   `;
 }
 
@@ -721,7 +723,6 @@ function flattenPublications(groups) {
 
 function renderPublicationPreview(groups, options = {}) {
   const items = flattenPublications(groups).slice(0, options.limit || 4);
-  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View all publications")}</a></div>` : "";
   return `
     <div class="output-preview-grid">
       ${items.map((item) => `
@@ -735,13 +736,11 @@ function renderPublicationPreview(groups, options = {}) {
         </article>
       `).join("")}
     </div>
-    ${footer}
   `;
 }
 
 function renderGalleryPreview(items, options = {}) {
   const list = items.slice(0, options.limit || 3);
-  const footer = options.href ? `<div class="section-link-row"><a class="text-sm font-semibold text-lab-700" href="${esc(options.href)}">${esc(options.label || "View gallery")}</a></div>` : "";
   return `
     <div class="gallery-preview-grid">
       ${list.map((item) => `
@@ -751,7 +750,6 @@ function renderGalleryPreview(items, options = {}) {
         </figure>
       `).join("")}
     </div>
-    ${footer}
   `;
 }
 
@@ -803,6 +801,10 @@ function renderFooter() {
         <nav class="footer-nav" aria-label="Secondary">
           ${SECONDARY_NAV_ITEMS.map((item) => `<a class="footer-link" href="${esc(item[1])}">${esc(item[2])}</a>`).join("")}
         </nav>
+      </div>
+      <div class="footer-meta">
+        <span>&copy; ${new Date().getFullYear()} HAX Lab</span>
+        <span>Human-Centered XR Systems</span>
       </div>
     </footer>
   `;
@@ -986,7 +988,6 @@ function renderPage(pageKey) {
       actions: [
         { href: "#research-themes", label: "Explore Research" },
         { href: "publications.html", label: "View Publications", variant: "secondary" },
-        { href: "people.html", label: "Meet the Lab", variant: "secondary" },
       ],
     });
     html += renderAnchorNav([
@@ -998,9 +999,9 @@ function renderPage(pageKey) {
     ]);
     html += sectionWrap("Research Themes", "A compact view of the recurring questions shaping the lab's current work.", renderCards(RESEARCH_TRACKS, { maxPills: 2, textClass: "line-clamp-2", titleClass: "text-[1.7rem]", cardClass: "feature-card--compact" }), { id: "research-themes", className: "section--feature section--tight-top", eyebrow: "Research" });
     html += sectionWrap("Featured Program", "A flagship direction that captures the lab's human-centered applied research style.", renderFeaturedProgram(FEATURED_PROJECT), { id: "featured-program", className: "section--feature", eyebrow: "Current Program" });
-    html += sectionWrap("Selected Outputs", "A short publication preview that reflects the lab's recent conference and journal rhythm.", renderPublicationPreview(PUBLICATION_GROUPS, { limit: 4, href: "publications.html", label: "View all publications" }), { id: "selected-outputs", className: "section--compact", eyebrow: "Publications" });
-    html += sectionWrap("Recent Signals", "A quick look at current milestones across grants, conferences, and project activity.", renderCompactSignals(NEWS_ITEMS, { limit: 4, href: "news.html", label: "View all signals" }), { id: "recent-signals", className: "section--compact", eyebrow: "Updates" });
-    html += sectionWrap("Around the Lab", "A restrained visual preview of demos, conferences, and everyday lab culture.", renderGalleryPreview(GALLERY, { limit: 3, href: "gallery.html", label: "View gallery" }), { id: "around-the-lab", className: "section--compact", eyebrow: "Culture" });
+    html += sectionWrap("Selected Outputs", "A short publication preview that reflects the lab's recent conference and journal rhythm.", renderPublicationPreview(PUBLICATION_GROUPS, { limit: 4 }), { id: "selected-outputs", className: "section--compact", eyebrow: "Publications", actions: renderInlineAction("View all publications", "publications.html") });
+    html += sectionWrap("Recent Signals", "A quick look at current milestones across grants, conferences, and project activity.", renderCompactSignals(NEWS_ITEMS, { limit: 4 }), { id: "recent-signals", className: "section--compact", eyebrow: "Updates", actions: renderInlineAction("View all signals", "news.html") });
+    html += sectionWrap("Around the Lab", "A restrained visual preview of demos, conferences, and everyday lab culture.", renderGalleryPreview(GALLERY, { limit: 3 }), { id: "around-the-lab", className: "section--compact", eyebrow: "Culture", actions: renderInlineAction("View gallery", "gallery.html") });
   } else if (pageKey === "news") {
     html += hero("Research updates, conference activity, and project milestones.", "The lab's public signal is shaped by conferences, publication outcomes, funded programs, and the steady addition of working systems.", ["Updates", "Conferences", "Projects"], {
       title: "Recent pattern",
